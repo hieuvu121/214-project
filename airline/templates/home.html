@@ -28,7 +28,7 @@
 <!--search panel-->
 <section class="promo-hero">
   <div class="container">
-    <div class="search-panel p-3 p-md-4">
+    <div class="search-panel p-3 p-md-4 mx-auto" style="max-width: 1200px;">
       <!--First row-->
        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 border-bottom pb-3 mb-3">
         <div class="d-flex align-items-center gap-3 flex-wrap">
@@ -45,12 +45,12 @@
           </div>
 
           <!--Travellers--> 
-          <div>
-            <a href="#" class="link-pill dropdown-toggle" data-bs-toggle="dropdown">
+          <div >
+            <a href="#" class="link-pill dropdown-toggle" data-bs-toggle="dropdown" data-bs-auto-close="outside">
               <i class="bi bi-arrow-left-right me-1"></i>
               <span id="travellersLabel">1 Traveller</span>
             </a>
-            <div class="dropdown-menu p-3" style="min-width:260px;">
+            <div class="dropdown-menu p-3" style="min-width:260px;" >
               <div class="d-flex justify-content-between align-items-center mb-2">
                 <label class="form-label m-0">Adults</label>
                 <div class="btn-group">
@@ -76,9 +76,9 @@
               <span id="cabinLabel">Economy</span>
             </a>
             <ul class="dropdown-menu">
-              <li><button class="dropdown-item" data-cabin>Economy</button></li>
-              <li><button class="dropdown-item" data-cabin>Premium Economy</button></li>
-              <li><button class="dropdown-item" data-cabin>Business</button></li>
+              <li><button class="dropdown-item" data-cabin="Economy">Economy</button></li>
+              <li><button class="dropdown-item" data-cabin="Premium Economy">Premium Economy</button></li>
+              <li><button class="dropdown-item" data-cabin="Business">Business</button></li>
             </ul>
           </div>
         </div>
@@ -102,13 +102,159 @@
             <div class="divider h-100"></div>
             <i class="bi bi-geo"></i>
             <input type="text" placeholder="Where to?" id="to">
+          </div>
+        <div class="input-chip" style="min-width: 280px;">
+          <i class="bi bi-calendar3"></i>
+          <input type="date" id="depart" aria-label="Return">
         </div>
-
-        </div>
-
-
+       </div>
     </div>
   </div>
+</section>
+{% endblock %}
+
+{% block extra_head %}
+{% load static %}
+  <style>
+    /*back ground photo and color*/
+    .promo-hero{
+      position:relative;min-height: 64vh;
+      background:#5cb6e6 url("{% static 'img/background.jpg' %}") center/cover no-repeat;
+      display:flex;
+      align-items:flex-start; 
+      padding-top: 2.5rem;
+      padding-bottom: 2.5rem;
+      height: 600px;
+    }
+    /*style search panel*/
+    .search-panel{
+      background: #fff;
+      border-radius: 18px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.12);
+      width: 1200px;
+    }
+    /*style input box*/
+    .input-chip{
+      background: #f3f4f6;
+      border-radius: 14px;
+      padding: .75rem 1rem;
+      display: flex;
+      align-items: center;
+      gap:.75rem;
+    }
+
+    .input-chip input[type='text'],
+    .input-chip input[type='date']{
+      border: 0;
+      background: transparent;
+      outline: none;
+      width: 100%;
+    }
+    .input-chip input:focus{
+      outline:2px solid #60a5fa;
+      outline-offset: 2px;
+    }
+
+    .muted{
+      color:#6b7280;
+    }
+
+    .divider{ 
+      width:1px; 
+      background:#e5e7eb; }
+    .link-pill{ 
+      color:#111827; 
+      text-decoration:none; 
+      font-weight:600; }
+
+    .link-pill:hover{ 
+      text-decoration:underline; }
+
+    .circle-btn{ 
+      width:40px; 
+      height:40px; 
+      border-radius:50%; 
+      display:inline-flex; 
+      align-items:center; 
+      justify-content:center; 
+      border:1px solid #e5e7eb; 
+      background:#fff ;}
+
+    .hero-dots{ 
+      position:absolute; 
+      bottom:20px; left:50%; 
+      transform:translateX(-50%); 
+      display:flex; gap:.5rem; }
+
+    .hero-dots .dot{ 
+      width:36px; height:36px; 
+      border-radius:50%; 
+      border:1px solid #e5e7eb; 
+      background:#fff; 
+      display:grid;                                                                                              
+      place-items:center; }
+    </style>
+{% endblock %}
+
+{% block extra_js %}
+    <script>
+      /*helper to find selector*/
+      const $=s=>document.querySelector(s);
+      const $$=s=>Array.from(document.querySelectorAll(s));
+
+      /*trip type*/
+      $$('.dropdown-item[data-trip]').forEach(b=>
+      /*get option from users*/
+        {b.addEventListener('click',e=>{
+          const t=e.currentTarget.getAttribute('data-trip');//one way or return
+          $('#tripLabel').textContent= t==='oneway'?'One way':'Return';
+          const ret=$('#return');
+          if (ret){
+            ret.disabled=(t==='oneway');
+            if (ret.disabled) ret.value='';
+          }
+        });
+      });
+
+      /*cabin*/
+      $$('.dropdown-item[data-cabin]').forEach(b=>{
+        b.addEventListener('click',e=>{
+          $('#cabinLabel').textContent=e.currentTarget.getAttribute('data-cabin');
+        });
+      });
+
+      /*travellers count*/
+      function updateTrav(){
+        const a=+$('#adults').textContent,
+              c=+$('#children').textContent;
+        const n=a+c;
+        $('#travellersLabel').textContent=n+' traveller'+(n>1 ? 's' : '');}
+        $$('.dropdown-menu [data-counter]').forEach(b=>{
+          b.addEventListener('click',e=>{
+            const key=e.currentTarget.getAttribute('data-counter');
+            const op=e.currentTarget.getAttribute('data-op');
+            const target=$('#'+key);
+            let v=+target.textContent;
+
+            if(op==='+'){
+              v=v+1;
+            }else{
+              const min=(key==='adults') ? 1:0;
+              v=Math.max(v-1,min);
+            }
+            target.textContent=v;
+            updateTrav();
+          });
+        });
+
+        /*swap function*/
+        $('#swapBtn').addEventListener('click',() =>{
+          const a=$('#from'),
+                b=$('#to');
+          [a.value,b.value]=[b.value,a.value];
+          a.focus()
+        });
 
 
+    </script>
 {% endblock %}

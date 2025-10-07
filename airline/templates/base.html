@@ -62,12 +62,110 @@
 
     .hero-dots{ position:absolute; bottom:20px; left:50%; transform:translateX(-50%); display:flex; gap:.5rem }
     .hero-dots .dot{ width:36px; height:36px; border-radius:50%; border:1px solid #e5e7eb; background:#fff; display:grid; place-items:center }
+    .site-footer{
+    background:#e6e4e4;            
+    }
+    .footer-title{
+    font-weight:700;
+    font-size:1.125rem;           
+    margin-bottom:.75rem;
+    }
+    .footer-links li + li{ margin-top:.5rem; }
+    .footer-links a{
+    color:#111827;                  
+    text-decoration:none;
+    }
+    .footer-links a:hover{
+    text-decoration:underline;
+    }
+    .brand-footer{
+    font-weight: 800; font-size: 1.75rem; line-height: 1;
+    color: #ea1d1d; /* nếu muốn giống tông đỏ trên */
+    }
+    .brand-footer .brand-word{ 
+        color:#ea1d1d; 
+    }
+    .brand-footer:hover{ 
+        text-decoration:none; opacity:.9; 
+    }
   </style>
 
   {% block extra_head %}{% endblock %}
 </head>
 <body>
   {% block body %}{% endblock %}
+  <footer class="site-footer py-5 py-lg-6">
+  <div class="container">
+
+    <!-- Logo -->
+    <div class="mb-4 mb-lg-5">
+      <a href="/" class="brand-footer text-decoration-none">
+       <span class="brand-word">FlyAirline</span>
+      </a>
+    </div>
+
+    <!-- Links -->
+    <div class="row g-4">
+      <div class="col-12 col-md-6 col-lg-3">
+        <h5 class="footer-title">Site quick links</h5>
+        <ul class="list-unstyled footer-links">
+          <li><a href="#">Flights</a></li>
+          <li><a href="#">Stays</a></li>
+          <li><a href="#">Holidays</a></li>
+          <li><a href="#">Car hire</a></li>
+          <li><a href="#">Tours</a></li>
+          <li><a href="#">Cruises</a></li>
+          <li><a href="#">Rail</a></li>
+          <li><a href="#">Business Travel</a></li>
+        </ul>
+      </div>
+
+      <div class="col-12 col-md-6 col-lg-3">
+        <h5 class="footer-title">Company</h5>
+        <ul class="list-unstyled footer-links">
+          <li><a href="#">About us</a></li>
+          <li><a href="#">Corporate Site</a></li>
+          <li><a href="#">Careers</a></li>
+          <li><a href="#">Advertising</a></li>
+        </ul>
+      </div>
+
+      <div class="col-12 col-md-6 col-lg-3">
+        <h5 class="footer-title">Extras</h5>
+        <ul class="list-unstyled footer-links">
+          <li><a href="#">Insurance</a></li>
+          <li><a href="#">Gift cards</a></li>
+          <li><a href="#">Holiday finance</a></li>
+          <li><a href="#">Captain's Pack</a></li>
+          <li><a href="#">Online Captain's Pack</a></li>
+          <li><a href="#">Travel eSIM</a></li>
+        </ul>
+      </div>
+
+      <div class="col-12 col-md-6 col-lg-3">
+        <h5 class="footer-title">Help &amp; support</h5>
+        <ul class="list-unstyled footer-links">
+          <li><a href="#">Help centre</a></li>
+          <li><a href="#">Contact us</a></li>
+          <li><a href="#">Store finder</a></li>
+          <li><a href="#">Privacy</a></li>
+          <li><a href="#">Cookies</a></li>
+          <li><a href="#">Insurance claim process</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Bottom bar -->
+    <div class="border-top mt-4 pt-3 d-flex flex-column flex-md-row gap-2 justify-content-between align-items-start">
+      <small class="text-muted">© 2025 FlyAirline. All rights reserved.</small>
+      <ul class="list-inline m-0">
+        <li class="list-inline-item"><a class="small" href="#">Terms</a></li>
+        <li class="list-inline-item"><a class="small" href="#">Privacy</a></li>
+        <li class="list-inline-item"><a class="small" href="#">Sitemap</a></li>
+      </ul>
+    </div>
+  </div>
+</footer>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   {% block extra_js %}{% endblock %}

@@ -23,4 +23,5 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path("",homeView.as_view(),name='home'),
     path('bookings/',include('bookings.urls')),
+    path('flights/',include('flights.urls')),
 ]

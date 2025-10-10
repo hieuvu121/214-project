@@ -2,117 +2,194 @@
 {% block body %}
 <!--filtering box -->
 <div class="container my-4">
-    <div class="row g-4">
-        <aside class=" col-12 col-lg-3">
+  <div class="row g-4">
+    <!-- Filters -->
+    <aside class="col-12 col-lg-3">
+      <div class="p-3 bg-white rounded-3 shadow-sm">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h5 class="m-0">Filters</h5>
+          <button class="btn btn-link btn-sm p-0" id="clearFilters">CLEAR ALL</button>
+        </div>
+        <small class="text-muted d-block mb-3" id="resultCount"></small>
 
-            <!--Filter part-->
-            <div class="p-3 bg-white rounded-3 shadow-sm">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <h5 class="m-0">Filters</h5>
-                    <button class="btn btn-link btn-sm p-0" id="clearFilters">CLEAR ALL</button>
-                </div>
-                <small class="text-muted d-block mb-3" id="resultCount"></small>
-                <div class="border-top">
-                    <h6 class="fw-semibold">Stops</h6>
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" value="0" id="fNonStop"></input>
-                        <label class="form-check-label" for="fNonStop">Non-Stop</label>
-                    </div>
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="f1Stop" value="1"></input>
-                        <label class="form-check-label" for="f1Stop">1 Stop</label>
-                    </div>
-                </div>
+        <!-- Stops -->
+        <div class="border-top pt-3">
+          <h6 class="fw-semibold">Stops</h6>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" value="0" id="fNonStop">
+            <label class="form-check-label" for="fNonStop">Non-stop</label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" value="1" id="f1Stop">
+            <label class="form-check-label" for="f1Stop">1 Stop</label>
+          </div>
+        </div>
 
-                <!--Departure time-->
-                <div class="border-top pt-3">
-                    <h6 class="fw-semibold">Departure times</h6>
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="fEvening" value="evening"></input>
-                        <label class="form-check-label" for="fEvening">Evening(18:30-23:59)</label>
-                    </div>
-                </div>
+        <!-- Departure Times -->
+        <div class="border-top pt-3">
+          <h6 class="fw-semibold">Departure Times</h6>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" value="evening" id="fEvening">
+            <label class="form-check-label" for="fEvening">Evening (18:00–23:59)</label>
+          </div>
+        </div>
 
-                <!--Airlines-->
-                <div class="border-top pt-3">
-                    <h6 class="fw-semibold">Airlines</h6>
-                    {% for a in airlines %}
-                    <div class="form-check">
-                        <input class="form-check-input airline-filter" type="checkbox" value="{{a|escape}}" id="al-{{forloop.counter}}"></input>
-                        <label class="form-check-label" for="al-{{forloop.counter}}">{{a}}</label>
-                    </div>
-                    {% endfor %}
-                </div>           
+        <!-- Airlines -->
+        <div class="border-top pt-3">
+          <h6 class="fw-semibold">Airlines</h6>
+          {% for a in airlines %}
+          <div class="form-check">
+            <input class="form-check-input airline-filter" type="checkbox" value="{{ a|escape }}" id="al-{{ forloop.counter }}">
+            <label class="form-check-label" for="al-{{ forloop.counter }}">{{ a }}</label>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </aside>
+
+    <!-- Results -->
+    <section class="col-12 col-lg-9">
+      <!-- Header -->
+      <div class="d-flex align-items-end justify-content-between flex-wrap mb-3">
+        <div>
+          <h3 class="mb-1">Select Departing Flight</h3>
+          <div class="text-muted">
+            {{ origin }} → {{ dest }}
+            {% if depart_date %} • {{ depart_date }}{% endif %}
+          </div>
+        </div>
+
+        <div class="d-flex align-items-center gap-2">
+          <label class="small text-muted">Sort by</label>
+          <select id="sortBy" class="form-select form-select-sm" style="min-width:240px;">
+            <option value="depart_asc">Departure Time (Earliest)</option>
+            <option value="price_asc">Price (Lowest)</option>
+            <option value="price_desc">Price (Highest)</option>
+            <option value="duration_asc">Duration (Shortest)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Outbound list -->
+      <div id="outboundList" class="vstack gap-3">
+        {% for f in outbound %}
+        <article class="bg-white rounded-3 shadow-sm p-3 flight-card"
+                 data-stops="{{ f.stops }}"
+                 data-depart="{{ f.depart }}"
+                 data-duration="{{ f.duration_min }}"
+                 data-price="{{ f.price }}"
+                 data-airline="{{ f.airline }}">
+          <div class="row align-items-center g-3">
+            <div class="col-12 col-md-2 text-md-center">
+              <div class="fw-semibold">{{ f.airline }}</div>
+              <small class="text-muted">{{ f.code }}</small>
             </div>
-        </aside>
-
-        <!--Display result lists-->
-        <section class="col-12 col-lg-9">
-
-            <!--sorting part-->
-            <div class="d-flex align-items-end justify-content-between flex-wrap mb-3">
+            <div class="col-12 col-md-6">
+              <div class="d-flex align-items-center justify-content-between">
                 <div>
-                    <h3 class="mb-1">Departing Flight</h3>
-                    <div class="text-muted">
-                        {{origin}}->{{dest}}
-                        {% if depart_date %} • {{depart_date}}{% endif %}
-                    </div>
+                  <div class="fw-bold fs-5">{{ f.depart }}</div>
+                  <small class="text-muted">{{ f.origin }}</small>
                 </div>
-                <div class="d-flex align-items-center gap-2">
-                    <label class="small text-muted">Sort by</label>
-                    <select id="sortBy" class="form-select-sm" style="min-width:240px;">
-                        <option value="depart_asc">Departure Time(Earliest)</option>
-                        <option value="price_asc">Price(Lowest)</option>
-                        <option value="price_desc">Price(Highest)</option>
-                        <option value="duration_asc">Duration(Shortest)</option>
-                    </select>
+                <div class="text-center flex-grow-1 px-3">
+                  <i class="bi bi-airplane"></i>
+                  <div class="small text-muted">
+                    {{ f.dur_h }}h {{ f.dur_m }}m{% if f.stops == 0 %}, Non-stop{% else %}, {{ f.stops }} stop{% endif %}
+                  </div>
+                </div>
+                    <div class="text-end">
+                        <div class="fw-bold fs-5">{{ f.arrive }}</div>
+                        <small class="text-muted">{{ f.dest }}</small>
+                    </div>
+               </div>
+            </div>
+            <div class="col-12 col-md-2 text-md-end">
+                <div class="badge bg-primary-subtle text-primary-emphasis p-2 w-100">
+                  From ${{f.price}}
                 </div>
             </div>
-
-            <!--outbound list-->
-            <div id="outboundList" class="vstack gap-3">
-                <!--loop through outbound list-->
-                {% for f in outbound %}
-                <article class="bg-white rounded-3 p-3 shadow-sm flight-card"
-                        data-stops="{{f.stops}}"
-                        data-depart="{{f.depart}}"
-                        data-duration="{{f.duration_min}}"
-                        data-price="{{f.price}}"
-                        data-airline="{{f.airline}}">
-                    <div class="row align-items-center g-3">
-                        <div class="col-12 col-md-2 text-md-center">
-                            <div class="fw-semibold">{{f.airline}}</div>
-                            <small class="text-muted">{{f.code}}</small>
-                        </div>
-                        <div class="col-12 col-md-6">
-                            <div class="d-flex align-items-center justify-content-between">
-                                <div class="fw-bold fs-5">{{f.depart}}</div>
-                                <small class="text-muted">{{f.origin}}</small>
-                            </div>
-                            <div class="text-center flex-grow-1 px-3">
-                                <i class="bi bi-airplane"></i>
-                                <div class="small text-muted">
-                                    {{f.dur_h}}h {{f.dur_m}}m
-                                    {% if f.stops == 0 %}
-                                        ,Non Stop
-                                    {% else %}
-                                        ,{{f.stops}} stops
-                                    {% endif %}
-                                </div>
-                            </div>
-                            <div class="text-end">
-
-                            </div>
-
-                        </div>
-
-                    </div>
-                </article>
-                {% endfor %}
+            <div class="col-12 col-md-2 text-md-end">
+              <div class="dropdown">
+                <button class="btn btn-primary w-100" data-bs-toggle="dropdown">Select</button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                  <li><a class="dropdown-item" href="#">Details</a></li>
+                  <li><a class="dropdown-item" href="#">Fare Rules</a></li>
+                </ul>
+              </div>
             </div>
-        </section>
+          </div>
+        </article>
+        <!--when can not find flights-->
+        {% empty %}
+          <div class="alert alert-light border">No departing flights found</div>
+        {% endfor %}
+      </div>
+<!--for return trip-->
+      {% if trip == "return" and return_date %}
+      <hr class="my-4">
+      <div class="d-flex align-items-end justify-content-between flex-wrap mb-3">
+        <div>
+          <h3 class="mb-1">Select Return Flights</h3>
+          <div class="text-muted">
+            {{ dest }} → {{ origin }}{% if return_date %} • {{ return_date }}
+            {% endif %}
+          </div>
+        </div>
+      </div>
 
-
+      <!--display inbound flights-->
+        <div id="inboundList" class="vstack gap-3">
+          {% for f in inbound %}
+          <article class="bg-white rounded-3 shadow-sm p-3 flight-card"
+                    data-stop="{{f.stops}}"
+                    data-depart="{{ f.depart }}"
+                    data-duration="{{ f.duration_min }}"
+                    data-price="{{ f.price }}"
+                    data-airline="{{ f.airline }}">
+              <div class="row align-items-center g-3">
+                <div class="col-12 col-md-2 text-md-center">
+                  <div class="fw-semibold">{{f.airline}}</div>
+                  <small class="text-muted">{{f.code}}</small>
+                </div>
+                <div class="col-12 col-md-6">
+                  <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                      <div class="fw-bold fs-5">{{f.depart}}</div>
+                      <small class="text-muted">{{f.origin}}</small>
+                    </div>
+                    <div class="text-center flex-grow-1 px-3">
+                      <i class="bi bi-airplane"></i>
+                      <div class="small text-muted">
+                        {{f.dur_h}}l {{f.dur_m}}m
+                        {% if f.stops==0 %}
+                          ,Non Stop
+                        {% else %}
+                          ,{{f.stops}} Stops
+                        {% endif %}
+                      </div>
+                    </div>
+                    <div class="text-end">
+                      <div class="fw-bold fs-5">{{f.arrive}}</div>
+                      <small class="text-muted">{{f.dest}}</small>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-12 col-md-2 text-md-end">
+                  <div class="badge bg-primary-subtle text-primary-emphasis p-2 w-100">
+                    From ${{f.price}}
+                  </div>
+                </div>
+                <div class="col-12 col-md-2 text-md-end">
+                  <button class="btn btn-primary w-100 ">Select</button>
+                </div>
+              </div>
+          </article>
+          {% empty %}
+            <div class="alert alert-light border">No return founds</div>
+          {% endfor %}
+        </div>
+        {% endif %}
+    </section>
     </div>
 </div>
-{% endblock body %}
+{% endblock %}
+

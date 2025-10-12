@@ -195,6 +195,15 @@
 
 {% block extra_js %}
 <script>
+  //helper funtion
   const $$=(sel,root=document)=>Array.from(root.querySelectorAll(sel));
-  const byTime =(t) =>{const[h,m]}
+  const byTime =(t) =>{const[h,m] = t.split(":").map(Number); return h*60+m; };
+
+  //update result count
+  function updateCount(){
+    const total = $$(".flight-card").length;
+    const shown = $$(".flight-card").filter(el => el.style.display !== "none").length;
+    const rc = document.getElementById("resultCount");
+    if (rc) rc.textContent = `Showing ${shown} of ${total} results.`;
+  }
 </script>

@@ -159,7 +159,7 @@
                     <div class="text-center flex-grow-1 px-3">
                       <i class="bi bi-airplane"></i>
                       <div class="small text-muted">
-                        {{f.dur_h}}l {{f.dur_m}}m
+                        {{f.dur_h}}h {{f.dur_m}}m
                         {% if f.stops == 0 %}
                           ,Non Stop
                         {% else %}
@@ -206,4 +206,72 @@
     const rc = document.getElementById("resultCount");
     if (rc) rc.textContent = `Showing ${shown} of ${total} results.`;
   }
+
+  //filter
+  function applyFilters(){
+    const nonstop =document.getElementById('fNonStop').checked;
+    const onestop=document.getElementById('f1Stop').checked;
+    const evening=document.getElementById('fEvening').checked;
+    const selectedAirlines=$$(".airline-filter:checked").map(c=>c.value);
+  
+    $$(".flight-card").forEach(card=> {
+      const stops=Number(card.dataset.stops);
+      const airline=card.dataset.airline;
+      const depart=card.dataset.depart;
+
+      //stop filters
+      let ofStops=true;
+      if (nonstop||onestop){
+        okStops=(nonstop && stops===0) || (onestop && stops ===1);
+      }
+      //evening filter
+      let okTime = true;
+      if (evening){
+        okTime = byTime(depart) >= 18*60;
+      }
+      //airline filter
+      let okAirline = true;
+      if (selectedAirlines.length){
+        okAirline = selectedAirlines.includes(airline);
+      }
+
+      card.style.display=(okStops && okTime &&okAirline) ? "" : "none";
+    });
+
+    updateCount();
+  }
+
+  //sorting
+  function applySort(){
+    const v = document.getElementById("sortBy").value;
+    ["#outboundList", "#inboundList"].forEach(sel => {
+      const list = document.querySelector(sel);
+      if (!list) return;
+      const items = $$(".flight-card", list);
+      const arr = Array.from(items);
+      arr.sort((a,b)=>{
+        if(v==="depart_asc")return byTime(a.dataset.depart)-byTime(b.dataset.depart);
+        if(v==="price_asc")return Number(a.dataset.price)-Number(b.dataset.price);
+        if(v==="price_desc")return Number(b.dataset.price)-Number(a.dataset.price);
+        if(v==="duration_asc")return Number(a.dataset.duration)-Number(b.dataset.duration);
+        return 0;
+      });
+      arr.forEach(el => list.appendChild(el));
+    });
+  }
+
+  $$("#fNonStop, #f1Stop, #fEvening, .airline-filter").forEach(el => {
+    el.addEventListener("change", applyFilters);
+  });
+  document.getElementById("clearFilters")?.addEventListener("click", ()=>{
+    $$("#fNonStop, #f1Stop, #fEvening, .airline-filter").forEach(el => el.checked = false);
+    applyFilters();
+  });
+  document.getElementById("sortBy")?.addEventListener("change", ()=>{
+    applySort(); updateCount();
+  });
+
+  applySort();
+  applyFilters();
 </script>
+{% endblock %}

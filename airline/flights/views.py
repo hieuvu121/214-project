@@ -1,4 +1,5 @@
-from django.shortcuts import render
+from django.shortcuts import render,redirect
+from django.urls import reverse
 from django.http import HttpResponse
 from django.views.generic.list import ListView
 from datetime import time
@@ -58,3 +59,13 @@ def flightList(request):
     }
 
     return render(request,'flightList.html',ctx)
+
+def search(request):
+    q=request.GET.copy()
+
+    required=['from','to','depart']
+    if not all(q.get(k) for k in required):
+        return redirect('home')
+    
+    base=reverse('flightList')
+    return redirect(f'{base}?{q.urlencode()}')

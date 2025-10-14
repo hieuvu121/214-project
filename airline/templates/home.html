@@ -1,11 +1,11 @@
 {% extends 'base.html' %}
 {% block body %}
-<!--search panel-->
 <section class="promo-hero">
   <div class="container">
-    <div class="search-panel p-3 p-md-4 mx-auto" style="max-width: 1200px;">
+    <form class="search-panel p-3 p-md-4 mx-auto" style="max-width: 1200px;"
+          method="get" action="{% url 'search' %}">
       <!--First row-->
-       <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 border-bottom pb-3 mb-3">
+      <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 border-bottom pb-3 mb-3">
         <div class="d-flex align-items-center gap-3 flex-wrap">
           <!--Trip type-->
           <div class="dropdown">
@@ -14,34 +14,34 @@
               <span id="tripLabel">Return</span>
             </a>
             <ul class="dropdown-menu">
-              <li><button class="dropdown-item" data-trip="return">Return</button></li>
-              <li><button class="dropdown-item" data-trip="oneway">One way</button></li>
+              <li><button class="dropdown-item" data-trip="return" type="button">Return</button></li>
+              <li><button class="dropdown-item" data-trip="oneway" type="button">One way</button></li>
             </ul>
           </div>
 
-          <!--Travellers--> 
-          <div >
+          <!--Travellers-->
+          <div>
             <a href="#" class="link-pill dropdown-toggle" data-bs-toggle="dropdown" data-bs-auto-close="outside">
               <i class="bi bi-arrow-left-right me-1"></i>
               <span id="travellersLabel">1 Traveller</span>
             </a>
-            <div class="dropdown-menu p-3" style="min-width:260px;" >
+            <div class="dropdown-menu p-3" style="min-width:260px;">
               <div class="d-flex justify-content-between align-items-center mb-2">
                 <label class="form-label m-0">Adults</label>
                 <div class="btn-group">
-                  <button class="btn btn-outline-secondary btn-sm" data-counter="adults" data-op="-">−</button>
+                  <button class="btn btn-outline-secondary btn-sm" data-counter="adults" data-op="-" type="button">−</button>
                   <span class="btn btn-outline-secondary btn-sm disabled" id="adults">1</span>
-                  <button class="btn btn-outline-secondary btn-sm" data-counter="adults" data-op="+">+</button>
+                  <button class="btn btn-outline-secondary btn-sm" data-counter="adults" data-op="+" type="button">+</button>
                 </div>
               </div>
               <div class="d-flex justify-content-between align-items-center mb-2">
                 <label class="form-label m-0">Children</label>
                 <div class="btn-group">
-                  <button class="btn btn-outline-secondary btn-sm" data-counter="children" data-op="-">-</button>
+                  <button class="btn btn-outline-secondary btn-sm" data-counter="children" data-op="-" type="button">-</button>
                   <span class="btn btn-outline-secondary btn-sm disabled" id="children">0</span>
-                  <button class="btn btn-outline-secondary btn-sm" data-counter="children" data-op="+">+</button>
+                  <button class="btn btn-outline-secondary btn-sm" data-counter="children" data-op="+" type="button">+</button>
                 </div>
-              </div>        
+              </div>
             </div>
           </div>
 
@@ -51,42 +51,49 @@
               <span id="cabinLabel">Economy</span>
             </a>
             <ul class="dropdown-menu">
-              <li><button class="dropdown-item" data-cabin="Economy">Economy</button></li>
-              <li><button class="dropdown-item" data-cabin="Premium Economy">Premium Economy</button></li>
-              <li><button class="dropdown-item" data-cabin="Business">Business</button></li>
+              <li><button class="dropdown-item" data-cabin="Economy" type="button">Economy</button></li>
+              <li><button class="dropdown-item" data-cabin="Premium Economy" type="button">Premium Economy</button></li>
+              <li><button class="dropdown-item" data-cabin="Business" type="button">Business</button></li>
             </ul>
           </div>
         </div>
 
         <!--search button-->
         <div class="d-grid d-lg-block">
-          <button class="btn btn-primary btn-lg px-3 ">
+          <button class="btn btn-primary btn-lg px-3" id="searchBtn" type="submit">
             <i class="bi bi-search"></i>Search flights
           </button>
         </div>
-       </div>
+      </div>
 
-        <!--row 2-->
-       <div class="d-flex gap-2">
-          <div class="flex-fill input-chip">
-            <i class="bi bi-geo-alt"></i>
-            <input type="text" id="from" placeholder="From" aria-label="From">
-            <button class="circle-btn" id="swapBtn" title="Change direction">
-              <i class="bi bi-arrow-left-right"></i>
-            </button>
-            <div class="divider h-100"></div>
-            <i class="bi bi-geo"></i>
-            <input type="text" placeholder="Where to?" id="to">
-          </div>
+      <!--row 2-->
+      <div class="d-flex gap-2">
+        <div class="flex-fill input-chip">
+          <i class="bi bi-geo-alt"></i>
+          <input type="text" id="from" name="from" placeholder="From" aria-label="From">
+          <button class="circle-btn" id="swapBtn" title="Change direction" type="button">
+            <i class="bi bi-arrow-left-right"></i>
+          </button>
+          <div class="divider h-100"></div>
+          <i class="bi bi-geo"></i>
+          <input type="text" placeholder="Where to?" id="to" name="to">
+        </div>
         <div class="input-chip" style="min-width: 280px;">
           <i class="bi bi-calendar3"></i>
-          <input type="date" id="depart" aria-label="Return">
+          <input type="date" id="depart" name="depart" aria-label="Return">
         </div>
-       </div>
-    </div>
+      </div>
+
+      <!-- Hidden inputs -->
+      <input type="hidden" name="trip" id="tripInput" value="return">
+      <input type="hidden" name="cabin" id="cabinInput" value="Economy">
+      <input type="hidden" name="adults" id="adultsInput" value="1">
+      <input type="hidden" name="children" id="childrenInput" value="0">
+    </form>
   </div>
 </section>
 {% endblock %}
+
 
 {% block extra_head %}
 {% load static %}

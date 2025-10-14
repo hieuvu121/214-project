@@ -237,6 +237,13 @@
           a.focus()
         });
 
+        /*update hidden inputs for adults and children*/
+        $$('.dropdown-menu [data-counter]').forEach(b=>{
+          b.addEventListener('click',e=>{
+            $('#adultsInput').value = $('#adults').textContent;
+            $('#childrenInput').value = $('#children').textContent;
+          });
+        });
 
     </script>
 {% endblock %}

@@ -24,4 +24,5 @@ urlpatterns = [
     path("",homeView.as_view(),name='home'),
     path('bookings/',include('bookings.urls')),
     path('flights/',include('flights.urls')),
+    path('booking/',include('bookings.urls')),
 ]

@@ -108,13 +108,8 @@
                 </div>
             </div>
             <div class="col-12 col-md-2 text-md-end">
-              <div class="dropdown">
-                <button class="btn btn-primary w-100" data-bs-toggle="dropdown">Select</button>
-                <ul class="dropdown-menu dropdown-menu-end">
-                  <li><a class="dropdown-item" href="#">Details</a></li>
-                  <li><a class="dropdown-item" href="#">Fare Rules</a></li>
-                </ul>
-              </div>
+              <a href="{% url 'book' %}?code={{ f.code }}&cabin={{ cabin }}&adults={{ adults }}&children={{ children }}&from={{ origin }}&to={{ dest }}&depart={{ depart_date }}&trip={{ trip }}" 
+                 class="btn btn-primary w-100">Select</a>
             </div>
           </div>
         </article>
@@ -179,7 +174,8 @@
                   </div>
                 </div>
                 <div class="col-12 col-md-2 text-md-end">
-                  <button class="btn btn-primary w-100 ">Select</button>
+                  <a href="{% url 'book' %}?code={{ f.code }}&cabin={{ cabin }}&adults={{ adults }}&children={{ children }}&from={{ dest }}&to={{ origin }}&depart={{ return_date }}&trip={{ trip }}" 
+                     class="btn btn-primary w-100">Select</a>
                 </div> 
               </div>
           </article>

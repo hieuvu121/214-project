@@ -22,6 +22,7 @@ from bookings.views import homeView
 urlpatterns = [
     path('admin/', admin.site.urls),
     path("",homeView.as_view(),name='home'),
+    path('auth/', include('auth_app.urls')),
     path('bookings/',include('bookings.urls')),
     path('flights/',include('flights.urls')),
     path('booking/',include('bookings.urls')),

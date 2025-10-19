@@ -15,7 +15,14 @@ class LoginView(View):
         if request.user.is_authenticated:
             return redirect('home')
         form = UserLoginForm()
-        return render(request, self.template_name, {'form': form})
+        # Check if user was redirected from a protected page
+        next_url = request.GET.get('next', '')
+        context = {
+            'form': form,
+            'next_url': next_url,
+            'redirect_reason': 'Please login to access flight search and booking features.' if next_url else ''
+        }
+        return render(request, self.template_name, context)
     
     def post(self, request):
         form = UserLoginForm(request.POST)
@@ -26,11 +33,20 @@ class LoginView(View):
             if user is not None:
                 login(request, user)
                 messages.success(request, f'Welcome back, {user.first_name or user.username}!')
-                next_url = request.GET.get('next', 'home')
+                # Check for next parameter from form or GET
+                next_url = request.POST.get('next') or request.GET.get('next', 'home')
                 return redirect(next_url)
             else:
                 messages.error(request, 'Invalid username or password.')
-        return render(request, self.template_name, {'form': form})
+        
+        # Include next_url in context for re-rendering
+        next_url = request.POST.get('next', '')
+        context = {
+            'form': form,
+            'next_url': next_url,
+            'redirect_reason': 'Please login to access flight search and booking features.' if next_url else ''
+        }
+        return render(request, self.template_name, context)
 
 class RegisterView(View):
     template_name = 'auth/register.html'

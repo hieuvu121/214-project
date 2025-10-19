@@ -209,9 +209,35 @@
 
             <!-- Action Buttons -->
             <div class="d-grid gap-2">
-              <button class="btn btn-primary btn-lg" type="button">
-                <i class="bi bi-credit-card me-2"></i>Proceed to Payment
-              </button>
+              {% if user.is_authenticated %}
+                <form method="post" action="{% url 'payment' %}" id="paymentForm">
+                  {% csrf_token %}
+                  <input type="hidden" name="flight_code" value="{{ flight_code }}">
+                  <input type="hidden" name="origin" value="{{ origin }}">
+                  <input type="hidden" name="destination" value="{{ dest }}">
+                  <input type="hidden" name="depart_date" value="{{ depart }}">
+                  <input type="hidden" name="return_date" value="{{ return_date }}">
+                  <input type="hidden" name="trip_type" value="{{ trip }}">
+                  <input type="hidden" name="cabin_class" value="{{ cabin }}">
+                  <input type="hidden" name="adults" value="{{ adults }}">
+                  <input type="hidden" name="children" value="{{ children }}">
+                  <input type="hidden" name="selected_seats" value="{{ selected_seats|safe }}">
+                  <input type="hidden" name="adult_price" value="{{ adult_price }}">
+                  <input type="hidden" name="child_price" value="{{ child_price }}">
+                  <input type="hidden" name="seat_fees" value="{{ total_seat_fees }}">
+                  <input type="hidden" name="taxes" value="{{ taxes }}">
+                  <input type="hidden" name="total_amount" value="{{ grand_total }}">
+                  
+                  <button class="btn btn-primary btn-lg w-100" type="submit">
+                    <i class="bi bi-credit-card me-2"></i>Proceed to Payment
+                  </button>
+                </form>
+              {% else %}
+                <a href="{% url 'auth:login' %}?next={{ request.get_full_path }}" class="btn btn-primary btn-lg w-100">
+                  <i class="bi bi-box-arrow-in-right me-2"></i>Login to Pay
+                </a>
+              {% endif %}
+              
               <a href="{% url 'book' %}?code={{ flight_code }}&cabin={{ cabin }}&adults={{ adults }}&children={{ children }}&from={{ origin }}&to={{ dest }}&depart={{ depart }}&trip={{ trip }}" 
                  class="btn btn-outline-secondary">
                 <i class="bi bi-arrow-left me-2"></i>Change Seats
@@ -266,6 +292,19 @@
 
 
   .col-12.col-lg-4 { align-self: flex-start; }
+  
+  /* Payment popup styles */
+  .modal-content {
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  }
+  
+  .modal-header {
+    font-weight: 600;
+  }
+  
+  .btn:disabled {
+    opacity: 0.7;
+  }
 </style>
 {% endblock %}
 
@@ -280,10 +319,150 @@
     });
   });
 
-  // Payment button demo
-  document.querySelector('.btn-primary.btn-lg')?.addEventListener('click', function() {
-    alert('Proceeding to payment...\nTotal: ${{ grand_total|floatformat:2 }}');
+  // Payment form submission with confirmation dialog
+  document.getElementById('paymentForm')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    // Show confirmation dialog
+    showPaymentConfirmationDialog();
   });
+
+  function showPaymentConfirmationDialog() {
+    // Create confirmation modal HTML
+    const modalHTML = `
+      <div class="modal fade" id="paymentConfirmationModal" tabindex="-1" aria-labelledby="paymentConfirmationModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content border-0" style="border-radius: 20px;">
+            <div class="modal-header bg-primary text-white" style="border-radius: 20px 20px 0 0; border: none;">
+              <h5 class="modal-title" id="paymentConfirmationModalLabel">
+                <i class="bi bi-question-circle-fill me-2"></i>Confirm Payment
+              </h5>
+            </div>
+            <div class="modal-body text-center p-4">
+              <div class="mb-4">
+                <i class="bi bi-credit-card text-primary" style="font-size: 4rem;"></i>
+              </div>
+              <h4 class="fw-bold mb-3">Proceed with Payment?</h4>
+              <p class="text-muted mb-3">Are you sure you want to proceed with the payment for this booking?</p>
+              
+              <div class="alert alert-info mb-3">
+                <div class="row g-2">
+                  <div class="col-6">
+                    <small class="text-muted d-block">Total Amount</small>
+                    <strong class="fs-5 text-primary">$' + {{ grand_total|floatformat:2 }} + '</strong>
+                  </div>
+                  <div class="col-6">
+                    <small class="text-muted d-block">Flight</small>
+                    <strong class="fs-5">' + '{{ flight_code }}' + '</strong>
+                  </div>
+                </div>
+              </div>
+              
+              <p class="small text-muted mb-0">
+                <i class="bi bi-info-circle me-1"></i>
+                Click "Confirm" to complete your booking
+              </p>
+            </div>
+            <div class="modal-footer border-0 p-4 pt-0">
+              <div class="d-grid gap-2 w-100">
+                <button type="button" class="btn btn-success btn-lg" data-bs-dismiss="modal" onclick="confirmPayment()">
+                  <i class="bi bi-check-circle me-2"></i>Confirm Payment
+                </button>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                  <i class="bi bi-x-circle me-2"></i>Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    // Add modal to page
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('paymentConfirmationModal'));
+    modal.show();
+    
+    // Remove modal when hidden
+    document.getElementById('paymentConfirmationModal').addEventListener('hidden.bs.modal', function() {
+      this.remove();
+    });
+  }
+
+  function confirmPayment() {
+    // Show a brief success message and redirect to home
+    showPaymentSuccessAndRedirect();
+  }
+
+  function showPaymentSuccessAndRedirect() {
+    // Create success modal HTML
+    const modalHTML = `
+      <div class="modal fade" id="paymentSuccessModal" tabindex="-1" aria-labelledby="paymentSuccessModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content border-0" style="border-radius: 20px;">
+            <div class="modal-header bg-success text-white" style="border-radius: 20px 20px 0 0; border: none;">
+              <h5 class="modal-title" id="paymentSuccessModalLabel">
+                <i class="bi bi-check-circle-fill me-2"></i>Payment Successful!
+              </h5>
+            </div>
+            <div class="modal-body text-center p-4">
+              <div class="mb-4">
+                <i class="bi bi-airplane text-success" style="font-size: 4rem;"></i>
+              </div>
+              <h4 class="fw-bold mb-3">Booking Confirmed!</h4>
+              <p class="text-muted mb-3">Your payment has been processed successfully.</p>
+              
+              <div class="alert alert-info mb-3">
+                <div class="row g-2">
+                  <div class="col-6">
+                    <small class="text-muted d-block">Total Paid</small>
+                    <strong class="fs-5 text-success">$' + {{ grand_total|floatformat:2 }} + '</strong>
+                  </div>
+                  <div class="col-6">
+                    <small class="text-muted d-block">Flight</small>
+                    <strong class="fs-5">' + '{{ flight_code }}' + '</strong>
+                  </div>
+                </div>
+              </div>
+              
+              <p class="small text-muted mb-0">
+                <i class="bi bi-info-circle me-1"></i>
+                Redirecting to homepage...
+              </p>
+            </div>
+            <div class="modal-footer border-0 p-4 pt-0">
+              <button type="button" class="btn btn-success btn-lg w-100" data-bs-dismiss="modal" onclick="redirectToHome()">
+                <i class="bi bi-house me-2"></i>Go to Homepage
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    // Add modal to page
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('paymentSuccessModal'));
+    modal.show();
+    
+    // Auto redirect after 3 seconds
+    setTimeout(() => {
+      redirectToHome();
+    }, 3000);
+    
+    // Remove modal when hidden
+    document.getElementById('paymentSuccessModal').addEventListener('hidden.bs.modal', function() {
+      this.remove();
+    });
+  }
+
+  function redirectToHome() {
+    window.location.href = '/';
+  }
 
   (function setHeaderOffset(){
     const header = document.querySelector('.navbar.fixed-top, .navbar.sticky-top, header, .site-header');

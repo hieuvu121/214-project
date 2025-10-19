@@ -4,7 +4,6 @@ from django.http import HttpResponse
 from django.views.generic.list import ListView
 from datetime import time
 
-#demo data for searching flights
 DEMO_FLIGHTS = [
     # airline, code, depart, arrive, origin, dest, duration_min, stops, price
     {"airline":"Virgin Australia","code":"VA882","depart":"19:00","arrive":"20:35","origin":"SYD","dest":"MEL","duration_min":95,"stops":0,"price":408},
@@ -26,22 +25,24 @@ def _enrich_duration(flightList):
 
 def flightList(request):
     trip=request.GET.get("trip",'oneway')
-    origin=request.GET.get("origin",'SYD')
-    dest=request.GET.get('dest','MEL')
+    origin=request.GET.get("from",'SYD')
+    dest=request.GET.get('to','MEL')
     depart_date=request.GET.get('depart')
     return_date=request.GET.get('return')
-    #for oneway flights will show flights that have
+    adults=request.GET.get('adults','1')
+    children=request.GET.get('children','0')
+    cabin=request.GET.get('cabin','Economy')
+    
     outbound=[
         f for f in DEMO_FLIGHTS
-        if f.get('origin')==origin and f.get("dest")==dest and (not depart_date or f.get('date')==depart_date)
+        if f.get('origin')==origin and f.get("dest")==dest
     ]
 
-    #flights showed for return selection
     inbound=[]
     if trip=='return' and return_date:
         inbound=[
             f for f in DEMO_FLIGHTS
-            if f.get('origin')==origin and f.get("dest")==dest and (not depart_date or f.get('date')==depart_date)
+            if f.get('origin')==dest and f.get("dest")==origin
         ]
 
     _enrich_duration(outbound)
@@ -56,6 +57,9 @@ def flightList(request):
         "outbound": outbound,
         "inbound": inbound,
         "airlines": sorted({f["airline"] for f in DEMO_FLIGHTS}),
+        "adults": adults,
+        "children": children,
+        "cabin": cabin,
     }
 
     return render(request,'flightList.html',ctx)

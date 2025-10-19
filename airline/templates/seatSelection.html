@@ -1,0 +1,297 @@
+{% extends 'base.html' %}
+
+{% block body %}
+<section class="min-vh-100 d-flex align-items-center justify-content-center py-4">
+  <div class="seat-container w-100" style="max-width: 1000px;">
+    <!-- Header: title + legend -->
+    <div class="d-flex justify-content-between align-items-end flex-wrap gap-2 mb-3">
+      <div>
+        <h2 class="mb-1 text-center text-lg-start">Choose your seats</h2>
+        <div class="text-muted">
+          Flight <strong>{{ flight_code }}</strong> • {{ cabin }} • Max select: <strong id="maxPick">{{ max_select }}</strong>
+        </div>
+      </div>
+      <div class="small">
+        <span class="legend me-3"><i class="legend-dot"></i>Available</span>
+        <span class="legend legend-selected me-3"><i class="legend-dot"></i>Selected</span>
+        <span class="legend legend-booked"><i class="legend-dot"></i>Booked</span>
+      </div>
+    </div>
+
+    <!-- Plane -->
+    <div class="plane">
+      <div class="door-labels">
+        <div class="door-left">Boarding door</div>
+        <div class="door-right">Boarding door</div>
+      </div>
+
+      <div class="windows-strip">
+        {% for i in ".................." %}<span class="window"></span>{% endfor %}
+      </div>
+
+      <!-- Airframe (tapered body) -->
+<div class="airframe">
+  <!-- visual skin draws the tapered airplane, but does NOT clip seats -->
+  <div class="airframe-skin" aria-hidden="true"></div>
+  <div class="cockpit" aria-hidden="true"></div>
+
+  <div class="seat-grid">
+    {% for r in rows %}
+      <div class="seat-row">
+        <div class="row-label">{{ r }}</div>
+
+        <div class="block">
+          {% for col in left_block %}
+            {% with seat=r|stringformat:"s"|add:col %}
+              {% if seat in booked %}
+                <button type="button" class="seat booked" data-seat="{{ seat }}" disabled>{{ col }}</button>
+              {% else %}
+                <button type="button" class="seat" data-seat="{{ seat }}">{{ col }}</button>
+              {% endif %}
+            {% endwith %}
+          {% endfor %}
+        </div>
+
+        <div class="aisle" aria-hidden="true"></div>
+
+        <div class="block">
+          {% for col in right_block %}
+            {% with seat=r|stringformat:"s"|add:col %}
+              {% if seat in booked %}
+                <button type="button" class="seat booked" data-seat="{{ seat }}" disabled>{{ col }}</button>
+              {% else %}
+                <button type="button" class="seat" data-seat="{{ seat }}">{{ col }}</button>
+              {% endif %}
+            {% endwith %}
+          {% endfor %}
+        </div>
+      </div>
+          {% endfor %}
+        </div>
+
+        <!-- Nose & tail cones (visual only) -->
+        <div class="nose-cone"></div>
+        <div class="tail-cone"></div>
+      </div>
+
+      <!-- Decorative wings -->
+      <div class="wing wing-left"></div>
+      <div class="wing wing-right"></div>
+    </div>
+
+    <!-- Footer: selection summary -->
+    <form class="mt-4 text-center" method="get" action="{% url 'summary' %}">
+      <input type="hidden" name="from" value="{{ origin }}">
+      <input type="hidden" name="to" value="{{ dest }}">
+      <input type="hidden" name="depart" value="{{ depart }}">
+      <input type="hidden" name="trip" value="{{ trip }}">
+      <input type="hidden" name="cabin" value="{{ cabin }}">
+      <input type="hidden" name="adults" value="{{ adults }}">
+      <input type="hidden" name="children" value="{{ children }}">
+      <input type="hidden" name="code" value="{{ flight_code }}">
+      <input type="hidden" name="seats" id="seatsInput">
+
+      <div class="d-inline-flex align-items-center gap-3">
+        <div>Selected: <strong id="seatsText">None</strong></div>
+        <button class="btn btn-primary" id="continueBtn" disabled>Continue</button>
+      </div>
+    </form>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_head %}
+<style>
+  .min-vh-100{min-height:100vh;}
+
+  /* Plane stage */
+  .plane{
+    position:relative;
+    margin:0 auto;
+    width:980px;
+    max-width:95vw;
+    padding:36px 0 64px;
+  }
+
+  /* Door labels */
+  .door-labels{
+    display:flex;justify-content:space-between;align-items:center;
+    max-width:980px;margin:0 auto 6px;padding:0 12px;
+    color:#667085;font-size:.95rem;
+  }
+  .door-left,.door-right{position:relative;user-select:none}
+  .door-left::before,.door-right::after{
+    content:"";display:inline-block;width:18px;height:1.5px;background:#c1c7d0;vertical-align:middle;margin:0 8px;
+  }
+
+  /* Windows strip */
+  .windows-strip{
+    display:flex;justify-content:center;gap:12px;margin-bottom:10px;
+  }
+  .window{
+    width:11px;height:15px;border-radius:4px;
+    background:#cfe4ff;border:1px solid #9fc5ff;
+  }
+
+  /* Airframe (tapered) */
+  .airframe{
+    position:relative;margin:0 auto;width:980px;max-width:95vw;
+    background:linear-gradient(180deg,#f7fbff 0%,#eef5ff 100%);
+    border:2px solid #dbe7ff; box-shadow:0 16px 32px rgba(0,0,0,.08);
+    padding:26px 28px;
+    border-radius:72px;
+    -webkit-clip-path: polygon(0% 50%, 2% 34%, 6% 22%, 12% 13%, 20% 7%, 30% 3%, 50% 0%, 70% 3%, 80% 7%, 88% 13%, 94% 22%, 98% 34%, 100% 50%, 98% 66%, 94% 78%, 88% 87%, 80% 93%, 70% 97%, 50% 100%, 30% 97%, 20% 93%, 12% 87%, 6% 78%, 2% 66%);
+            clip-path: polygon(0% 50%, 2% 34%, 6% 22%, 12% 13%, 20% 7%, 30% 3%, 50% 0%, 70% 3%, 80% 7%, 88% 13%, 94% 22%, 98% 34%, 100% 50%, 98% 66%, 94% 78%, 88% 87%, 80% 93%, 70% 97%, 50% 100%, 30% 97%, 20% 93%, 12% 87%, 6% 78%, 2% 66%);
+  }
+
+  /* Cockpit window (subtle) */
+  .cockpit{
+    position:absolute;left:20px;top:50%;transform:translateY(-50%);
+    width:64px;height:36px;border-radius:18px 24px 24px 18px / 18px 20px 20px 18px;
+    background:radial-gradient(110px 40px at 55% 50%, #1f2937 0 55%, rgba(31,41,55,.0) 56%);
+    opacity:.14; pointer-events:none;
+  }
+
+  /* Nose & tail cones (visual only) */
+  .nose-cone,.tail-cone{position:absolute;inset:0;pointer-events:none;}
+  .nose-cone::before,.tail-cone::before{
+    content:"";position:absolute;top:50%;transform:translateY(-50%);
+    width:120px;height:120px;border-radius:50%;
+    background:inherit;border:inherit;box-shadow:inherit;
+  }
+  .nose-cone::before{left:-54px;filter:blur(.2px);}
+  .tail-cone::before{right:-54px;filter:blur(.2px);}
+
+  /* Wings */
+  .wing{
+    position:absolute;top:50%;z-index:0;transform:translateY(-50%);
+    width:220px;height:84px;border:1px solid #c8dbff;
+    background:linear-gradient(180deg,#ecf2ff,#dbe8ff);
+    box-shadow:0 14px 28px rgba(0,0,0,.08);
+  }
+  .wing-left{left:-82px;border-top-left-radius:18px;border-bottom-right-radius:20px;transform:translateY(-50%) rotate(7deg);}
+  .wing-right{right:-82px;border-top-right-radius:18px;border-bottom-left-radius:20px;transform:translateY(-50%) rotate(-7deg);}
+
+  /* Seat grid and rows */
+  .seat-grid{position:relative;z-index:1;background:#f9fbff;border:1px dashed #d6e4ff;border-radius:32px;padding:18px 16px;}
+  .seat-row{display:flex;align-items:center;gap:12px;margin:8px 0;}
+  .row-label{width:44px;text-align:center;color:#6b7280;font-weight:600;}
+  .block{display:flex;gap:10px;}
+  .aisle{width:68px;}
+
+  /* Seats */
+  .seat{
+    width:40px;height:40px;border-radius:10px;border:1px solid #cbd5e1;background:#fff;
+    font-weight:600;cursor:pointer;position:relative;transition:transform .05s ease;
+  }
+  .seat:hover{outline:2px solid #93c5fd;outline-offset:2px;transform:translateY(-1px);}
+  .seat.booked{background:#e5e7eb;color:#9ca3af;border-color:#d1d5db;cursor:not-allowed;}
+  .seat.booked::after{content:"✕";position:absolute;inset:0;display:grid;place-items:center;font-size:18px;color:#9aa0a6;pointer-events:none;}
+  .seat.selected{background:#ef4444;color:#fff;border-color:#dc2626;}
+
+  .legend{display:inline-flex;align-items:center;gap:.4rem;color:#6b7280;}
+  .legend-dot{display:inline-block;width:14px;height:14px;border-radius:4px;border:1px solid #cbd5e1;background:#fff;}
+  .legend-selected .legend-dot{background:#ef4444;border-color:#dc2626;}
+  .legend-booked .legend-dot{background:#e5e7eb;border-color:#d1d5db;}
+
+.airframe{
+  position:relative;
+  margin:0 auto;
+  width:980px;          
+  max-width:95vw;
+  padding:0;              
+  overflow:visible;        
+  z-index:1;
+}
+
+.airframe-skin{
+  position:absolute; inset:0;
+  background:linear-gradient(180deg,#f7fbff 0%,#eef5ff 100%);
+  border:2px solid #dbe7ff;
+  box-shadow:0 16px 32px rgba(0,0,0,.08);
+  border-radius:72px;     
+  -webkit-clip-path: polygon(0% 50%, 2% 34%, 6% 22%, 12% 13%, 20% 7%, 30% 3%, 50% 0%, 70% 3%, 80% 7%, 88% 13%, 94% 22%, 98% 34%, 100% 50%, 98% 66%, 94% 78%, 88% 87%, 80% 93%, 70% 97%, 50% 100%, 30% 97%, 20% 93%, 12% 87%, 6% 78%, 2% 66%);
+          clip-path: polygon(0% 50%, 2% 34%, 6% 22%, 12% 13%, 20% 7%, 30% 3%, 50% 0%, 70% 3%, 80% 7%, 88% 13%, 94% 22%, 98% 34%, 100% 50%, 98% 66%, 94% 78%, 88% 87%, 80% 93%, 70% 97%, 50% 100%, 30% 97%, 20% 93%, 12% 87%, 6% 78%, 2% 66%);
+  z-index:0;               
+  pointer-events:none;
+}
+
+.seat-grid{
+  position:relative; z-index:1;
+  background:#f9fbff;
+  border:1px dashed #d6e4ff;
+  border-radius:32px;
+  padding:18px 16px;
+  width:max-content;       
+  margin:16px auto;        
+}
+.wing{ z-index:-1; }
+.cockpit{
+  position:absolute; left:20px; top:50%; transform:translateY(-50%);
+  width:64px; height:36px; border-radius:18px 24px 24px 18px / 18px 20px 20px 18px;
+  background:radial-gradient(110px 40px at 55% 50%, #1f2937 0 55%, rgba(31,41,55,0) 56%);
+  opacity:.14; pointer-events:none; z-index:0;
+}
+.nose-cone::before,.tail-cone::before{
+  content:""; position:absolute; top:50%; transform:translateY(-50%);
+  width:120px; height:120px; border-radius:50%;
+  background:linear-gradient(180deg,#f7fbff 0%,#eef5ff 100%);
+  border:2px solid #dbe7ff; box-shadow:0 16px 32px rgba(0,0,0,.08);
+}
+.nose-cone::before{ left:-54px; }
+.tail-cone::before{ right:-54px; }
+
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const maxSelect = {{ max_select }};
+  let selectedSeats = [];
+  const seatButtons = document.querySelectorAll('.seat:not(.booked)');
+
+  seatButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const seatId = btn.getAttribute('data-seat');
+
+      if (btn.classList.contains('selected')) {
+        btn.classList.remove('selected');
+        selectedSeats = selectedSeats.filter(s => s !== seatId);
+      } else {
+        if (selectedSeats.length < maxSelect) {
+          btn.classList.add('selected');
+          selectedSeats.push(seatId);
+        } else {
+          alert(`You can select up to ${maxSelect} seat(s).`);
+        }
+      }
+      updateSelectedDisplay();
+    });
+  });
+
+  function updateSelectedDisplay() {
+    const seatsText = document.getElementById('seatsText');
+    const seatsInput = document.getElementById('seatsInput');
+    const continueBtn = document.getElementById('continueBtn');
+
+    if (selectedSeats.length === 0) {
+      seatsText.textContent = 'None';
+      seatsInput.value = '';
+      continueBtn.disabled = true;
+      return;
+    }
+
+    const sorted = [...selectedSeats].sort((a, b) => {
+      const ax = a.match(/^(\d+)([A-Za-z]+)$/);
+      const bx = b.match(/^(\d+)([A-Za-z]+)$/);
+      if (!ax || !bx) return a.localeCompare(b);
+      const rowDiff = parseInt(ax[1], 10) - parseInt(bx[1], 10);
+      return rowDiff !== 0 ? rowDiff : ax[2].localeCompare(bx[2]);
+    });
+
+    seatsText.textContent = sorted.join(', ');
+    seatsInput.value = sorted.join(',');
+    continueBtn.disabled = (selectedSeats.length !== maxSelect);
+  }
+</script>
+{% endblock %}

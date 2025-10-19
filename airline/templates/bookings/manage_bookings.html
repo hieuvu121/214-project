@@ -9,6 +9,13 @@
     <div class="text-center mb-4">
       <h2 class="fw-bold mb-2">My Bookings</h2>
       <p class="text-muted">Manage your flight reservations</p>
+      
+      <!-- Show Cancelled Bookings Toggle -->
+      <div class="mt-3">
+        <button class="btn btn-outline-secondary btn-sm" onclick="toggleCancelledBookings()">
+          <i class="bi bi-eye me-2"></i>Show Cancelled Bookings
+        </button>
+      </div>
     </div>
 
     <!-- Messages -->
@@ -21,11 +28,14 @@
       {% endfor %}
     {% endif %}
 
+    <!-- CSRF Token for AJAX requests -->
+    {% csrf_token %}
+
     {% if bookings %}
       <div class="row g-4">
         {% for booking in bookings %}
           <div class="col-12">
-            <div class="card shadow-sm border-0" style="border-radius: 20px;" data-booking-id="{{ booking.id }}">
+            <div class="card shadow-sm border-0 {% if booking.status == 'cancelled' %}opacity-75{% endif %}" style="border-radius: 20px;" data-booking-id="{{ booking.id }}">
               <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center" style="border-radius: 20px 20px 0 0;">
                 <div>
                   <h5 class="mb-0">
@@ -34,7 +44,7 @@
                   <small>Booked on {{ booking.created_at|date:"M d, Y" }}</small>
                 </div>
                 <div class="text-end">
-                  <span class="badge bg-{% if booking.status == 'confirmed' %}success{% elif booking.status == 'pending' %}warning{% elif booking.status == 'cancelled' %}danger{% else %}secondary{% endif %} fs-6">
+                  <span class="badge bg-{% if booking.status == 'confirmed' %}success{% elif booking.status == 'pending' %}warning{% elif booking.status == 'cancelled' %}danger{% elif booking.status == 'completed' %}info{% else %}secondary{% endif %} fs-6">
                     {{ booking.get_status_display }}
                   </span>
                   <div class="fw-bold fs-5">${{ booking.total_amount|floatformat:2 }}</div>
@@ -222,20 +232,11 @@
                     <button class="btn btn-primary" onclick="showBookingSummary('{{ booking.id }}')">
                       <i class="bi bi-eye me-2"></i>View Full Summary
                     </button>
-                    <a href="#" class="btn btn-outline-primary">
-                      <i class="bi bi-download me-2"></i>Download Ticket
-                    </a>
-                    <a href="#" class="btn btn-outline-success">
-                      <i class="bi bi-pencil me-2"></i>Modify Booking
-                    </a>
                     {% if booking.status == 'confirmed' %}
-                    <a href="#" class="btn btn-outline-danger">
+                    <button class="btn btn-outline-danger" onclick="showCancelConfirmation({{ booking.id }}, '{{ booking.booking_reference }}')">
                       <i class="bi bi-x-circle me-2"></i>Cancel Booking
-                    </a>
+                    </button>
                     {% endif %}
-                    <a href="#" class="btn btn-outline-info">
-                      <i class="bi bi-headset me-2"></i>Get Help
-                    </a>
                   </div>
                 </div>
               </div>
@@ -256,6 +257,24 @@
         </div>
       </div>
     {% endif %}
+
+    <!-- Cancelled Bookings Section (Hidden by default) -->
+    <div id="cancelledBookingsSection" style="display: none;" class="mt-5">
+      <div class="text-center mb-4">
+        <h4 class="fw-bold text-muted">Cancelled Bookings</h4>
+        <p class="text-muted small">Your previously cancelled flight reservations</p>
+      </div>
+      
+      <div id="cancelledBookingsList">
+        <!-- Cancelled bookings will be loaded here via AJAX -->
+        <div class="text-center py-4">
+          <div class="spinner-border text-muted" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+          <p class="text-muted mt-2">Loading cancelled bookings...</p>
+        </div>
+      </div>
+    </div>
   </div>
 </section>
 {% endblock %}
@@ -292,6 +311,261 @@
     });
   }, 5000);
 
+  let cancelledBookingsVisible = false;
+
+  function toggleCancelledBookings() {
+    const section = document.getElementById('cancelledBookingsSection');
+    const button = document.querySelector('button[onclick="toggleCancelledBookings()"]');
+    
+    if (!cancelledBookingsVisible) {
+      // Show cancelled bookings
+      section.style.display = 'block';
+      button.innerHTML = '<i class="bi bi-eye-slash me-2"></i>Hide Cancelled Bookings';
+      cancelledBookingsVisible = true;
+      
+      // Load cancelled bookings if not already loaded
+      loadCancelledBookings();
+    } else {
+      // Hide cancelled bookings
+      section.style.display = 'none';
+      button.innerHTML = '<i class="bi bi-eye me-2"></i>Show Cancelled Bookings';
+      cancelledBookingsVisible = false;
+    }
+  }
+
+  function loadCancelledBookings() {
+    const container = document.getElementById('cancelledBookingsList');
+    
+    // Show loading state
+    container.innerHTML = `
+      <div class="text-center py-4">
+        <div class="spinner-border text-muted" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="text-muted mt-2">Loading cancelled bookings...</p>
+      </div>
+    `;
+    
+    // Fetch cancelled bookings
+    fetch('/booking/cancelled/', {
+      method: 'GET',
+      headers: {
+        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success && data.bookings.length > 0) {
+        // Display cancelled bookings
+        container.innerHTML = data.html;
+      } else {
+        // No cancelled bookings
+        container.innerHTML = `
+          <div class="text-center py-5">
+            <i class="bi bi-check-circle text-muted" style="font-size: 3rem;"></i>
+            <h5 class="mt-3 text-muted">No Cancelled Bookings</h5>
+            <p class="text-muted">You haven't cancelled any bookings yet.</p>
+          </div>
+        `;
+      }
+    })
+    .catch(error => {
+      console.error('Error loading cancelled bookings:', error);
+      container.innerHTML = `
+        <div class="text-center py-4">
+          <i class="bi bi-exclamation-circle text-danger" style="font-size: 2rem;"></i>
+          <p class="text-danger mt-2">Error loading cancelled bookings</p>
+        </div>
+      `;
+    });
+  }
+
+  function showCancelConfirmation(bookingId, bookingReference) {
+    // Create confirmation modal HTML
+    const modalHTML = `
+      <div class="modal fade" id="cancelConfirmationModal" tabindex="-1" aria-labelledby="cancelConfirmationModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content border-0" style="border-radius: 20px;">
+            <div class="modal-header bg-danger text-white" style="border-radius: 20px 20px 0 0; border: none;">
+              <h5 class="modal-title" id="cancelConfirmationModalLabel">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>Cancel Booking
+              </h5>
+            </div>
+            <div class="modal-body text-center p-4">
+              <div class="mb-4">
+                <i class="bi bi-x-circle text-danger" style="font-size: 4rem;"></i>
+              </div>
+              <h4 class="fw-bold mb-3">Are you sure?</h4>
+              <p class="text-muted mb-3">You are about to cancel booking <strong>${bookingReference}</strong></p>
+              
+              <div class="alert alert-warning mb-3">
+                <i class="bi bi-info-circle me-2"></i>
+                <strong>Important:</strong> This action cannot be undone. You may be subject to cancellation fees.
+              </div>
+              
+              <p class="small text-muted mb-0">
+                <i class="bi bi-lightbulb me-1"></i>
+                Consider contacting customer service if you need to modify your booking instead.
+              </p>
+            </div>
+            <div class="modal-footer border-0 p-4 pt-0">
+              <div class="d-grid gap-2 w-100">
+                <button type="button" class="btn btn-danger btn-lg" onclick="confirmCancelBooking(${bookingId})">
+                  <i class="bi bi-check-circle me-2"></i>Yes, Cancel Booking
+                </button>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                  <i class="bi bi-x-circle me-2"></i>Keep Booking
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    // Add modal to page
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('cancelConfirmationModal'));
+    modal.show();
+    
+    // Remove modal when hidden
+    document.getElementById('cancelConfirmationModal').addEventListener('hidden.bs.modal', function() {
+      this.remove();
+    });
+  }
+
+  function confirmCancelBooking(bookingId) {
+    // Close the confirmation modal first
+    const confirmationModal = document.getElementById('cancelConfirmationModal');
+    if (confirmationModal) {
+      const modal = bootstrap.Modal.getInstance(confirmationModal);
+      if (modal) {
+        modal.hide();
+      }
+    }
+    
+    // Show loading state
+    const cancelBtn = document.querySelector(`button[onclick*="${bookingId}"]`);
+    if (cancelBtn) {
+      const originalText = cancelBtn.innerHTML;
+      cancelBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Cancelling...';
+      cancelBtn.disabled = true;
+    }
+    
+    // Submit cancellation request
+    fetch(`/booking/cancel/${bookingId}/`, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        'Content-Type': 'application/json',
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        // Show success message
+        showCancelSuccessMessage(data);
+        // Reload the page to update the booking status
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
+      } else {
+        // Show error message
+        showCancelErrorMessage(data.message);
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      showCancelErrorMessage('An error occurred while cancelling the booking.');
+    })
+    .finally(() => {
+      // Reset button state
+      if (cancelBtn) {
+        cancelBtn.innerHTML = originalText;
+        cancelBtn.disabled = false;
+      }
+    });
+  }
+
+  function showCancelSuccessMessage(data) {
+    const modalHTML = `
+      <div class="modal fade" id="cancelSuccessModal" tabindex="-1" aria-labelledby="cancelSuccessModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content border-0" style="border-radius: 20px;">
+            <div class="modal-header bg-success text-white" style="border-radius: 20px 20px 0 0; border: none;">
+              <h5 class="modal-title" id="cancelSuccessModalLabel">
+                <i class="bi bi-check-circle-fill me-2"></i>Booking Cancelled
+              </h5>
+            </div>
+            <div class="modal-body text-center p-4">
+              <div class="mb-4">
+                <i class="bi bi-check-circle text-success" style="font-size: 4rem;"></i>
+              </div>
+              <h4 class="fw-bold mb-3">Cancellation Successful</h4>
+              <p class="text-muted mb-3">${data.message}</p>
+              
+              <div class="alert alert-info mb-3">
+                <i class="bi bi-info-circle me-2"></i>
+                <strong>Next Steps:</strong> You will receive a confirmation email shortly. Any refunds will be processed within 5-7 business days.
+              </div>
+            </div>
+            <div class="modal-footer border-0 p-4 pt-0">
+              <button type="button" class="btn btn-success btn-lg w-100" data-bs-dismiss="modal">
+                <i class="bi bi-check-circle me-2"></i>OK
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    const modal = new bootstrap.Modal(document.getElementById('cancelSuccessModal'));
+    modal.show();
+    
+    document.getElementById('cancelSuccessModal').addEventListener('hidden.bs.modal', function() {
+      this.remove();
+    });
+  }
+
+  function showCancelErrorMessage(message) {
+    const modalHTML = `
+      <div class="modal fade" id="cancelErrorModal" tabindex="-1" aria-labelledby="cancelErrorModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content border-0" style="border-radius: 20px;">
+            <div class="modal-header bg-danger text-white" style="border-radius: 20px 20px 0 0; border: none;">
+              <h5 class="modal-title" id="cancelErrorModalLabel">
+                <i class="bi bi-exclamation-circle-fill me-2"></i>Cancellation Failed
+              </h5>
+            </div>
+            <div class="modal-body text-center p-4">
+              <div class="mb-4">
+                <i class="bi bi-x-circle text-danger" style="font-size: 4rem;"></i>
+              </div>
+              <h4 class="fw-bold mb-3">Unable to Cancel</h4>
+              <p class="text-muted mb-0">${message}</p>
+            </div>
+            <div class="modal-footer border-0 p-4 pt-0">
+              <button type="button" class="btn btn-danger btn-lg w-100" data-bs-dismiss="modal">
+                <i class="bi bi-arrow-left me-2"></i>Try Again
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    const modal = new bootstrap.Modal(document.getElementById('cancelErrorModal'));
+    modal.show();
+    
+    document.getElementById('cancelErrorModal').addEventListener('hidden.bs.modal', function() {
+      this.remove();
+    });
+  }
+
   function showBookingSummary(bookingId) {
     // Find the booking card by ID
     const bookingCard = document.querySelector(`[data-booking-id="${bookingId}"]`);
@@ -316,7 +590,7 @@
               <div class="row g-4">
                 <div class="col-md-6">
                   <h6 class="fw-semibold text-primary mb-3">
-                    <i class="bi bi-airplane-fill me-2"></i>Flight Information
+                    Flight Information
                   </h6>
                   <div class="bg-light p-3 rounded">
                     <div class="d-flex justify-content-between mb-2">
@@ -338,9 +612,6 @@
                     <i class="bi bi-info-circle me-2"></i>Quick Actions
                   </h6>
                   <div class="d-grid gap-2">
-                    <button class="btn btn-outline-primary">
-                      <i class="bi bi-download me-2"></i>Download Ticket
-                    </button>
                     <button class="btn btn-outline-success">
                       <i class="bi bi-pencil me-2"></i>Modify Booking
                     </button>
@@ -353,7 +624,6 @@
               
               <div class="mt-4">
                 <div class="alert alert-info">
-                  <i class="bi bi-lightbulb me-2"></i>
                   <strong>Tip:</strong> You can use the action buttons below to manage your booking, download tickets, or get help with your reservation.
                 </div>
               </div>

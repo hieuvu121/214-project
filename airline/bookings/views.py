@@ -112,6 +112,32 @@ def summary(request):
     
     return render(request, 'summary.html', context)
 
+def parse_selected_seats(selected_seats_str):
+    """Safely parse selected seats from various formats"""
+    if not selected_seats_str or selected_seats_str.strip() == '':
+        return []
+    
+    # Try to parse as JSON first
+    try:
+        return json.loads(selected_seats_str)
+    except (json.JSONDecodeError, TypeError):
+        pass
+    
+    # If JSON parsing fails, try to parse as comma-separated string
+    try:
+        if isinstance(selected_seats_str, str):
+            # Remove brackets and quotes if present
+            cleaned = selected_seats_str.strip('[]"\'')
+            if cleaned:
+                # Split by comma and clean each seat
+                seats = [seat.strip().strip('"\'') for seat in cleaned.split(',') if seat.strip()]
+                return seats
+    except:
+        pass
+    
+    # If all else fails, return empty list
+    return []
+
 @login_required(login_url='/auth/login/')
 @require_http_methods(["POST"])
 def payment(request):
@@ -119,12 +145,16 @@ def payment(request):
     # Process payment (simplified for demo)
     # In real implementation, you'd integrate with payment gateway
     
+    print(f"Payment request received from user: {request.user}")
+    print(f"Request method: {request.method}")
+    print(f"POST data: {request.POST}")
+    
     # Get booking details from POST data
     flight_code = request.POST.get('flight_code')
     origin = request.POST.get('origin')
     destination = request.POST.get('destination')
-    depart_date = request.POST.get('depart_date')
-    return_date = request.POST.get('return_date')
+    depart_date_str = request.POST.get('depart_date')
+    return_date_str = request.POST.get('return_date')
     trip_type = request.POST.get('trip_type')
     cabin_class = request.POST.get('cabin_class')
     adults = int(request.POST.get('adults', 1))
@@ -136,7 +166,57 @@ def payment(request):
     taxes = float(request.POST.get('taxes', 0))
     total_amount = float(request.POST.get('total_amount', 0))
     
+    # Parse dates - handle different possible formats
+    from datetime import datetime
     try:
+        # Try different date formats
+        for fmt in ['%Y-%m-%d', '%m/%d/%Y', '%d/%m/%Y', '%Y-%m-%d %H:%M:%S']:
+            try:
+                depart_date = datetime.strptime(depart_date_str, fmt).date()
+                break
+            except ValueError:
+                continue
+        else:
+            # If no format works, use today's date
+            depart_date = datetime.now().date()
+    except:
+        depart_date = datetime.now().date()
+    
+    return_date = None
+    if return_date_str and return_date_str.strip():
+        try:
+            # Try different date formats for return date
+            for fmt in ['%Y-%m-%d', '%m/%d/%Y', '%d/%m/%Y', '%Y-%m-%d %H:%M:%S']:
+                try:
+                    return_date = datetime.strptime(return_date_str, fmt).date()
+                    break
+                except ValueError:
+                    continue
+        except:
+            return_date = None
+    
+    try:
+        # Debug: Print received data
+        print(f"Payment data received:")
+        print(f"Flight code: {flight_code}")
+        print(f"Origin: {origin}")
+        print(f"Destination: {destination}")
+        print(f"Depart date: {depart_date}")
+        print(f"Return date: {return_date}")
+        print(f"Trip type: {trip_type}")
+        print(f"Cabin class: {cabin_class}")
+        print(f"Adults: {adults}")
+        print(f"Children: {children}")
+        print(f"Selected seats (raw): '{selected_seats}'")
+        print(f"Selected seats (type): {type(selected_seats)}")
+        parsed_seats = parse_selected_seats(selected_seats)
+        print(f"Selected seats (parsed): {parsed_seats}")
+        print(f"Adult price: {adult_price}")
+        print(f"Child price: {child_price}")
+        print(f"Seat fees: {seat_fees}")
+        print(f"Taxes: {taxes}")
+        print(f"Total amount: {total_amount}")
+        
         # Create booking record
         booking = Booking.objects.create(
             user=request.user,
@@ -144,12 +224,12 @@ def payment(request):
             origin=origin,
             destination=destination,
             depart_date=depart_date,
-            return_date=return_date if return_date else None,
+            return_date=return_date,
             trip_type=trip_type,
             cabin_class=cabin_class,
             adults=adults,
             children=children,
-            selected_seats=json.loads(selected_seats),
+            selected_seats=parse_selected_seats(selected_seats),
             adult_price=adult_price,
             child_price=child_price,
             seat_fees=seat_fees,
@@ -157,6 +237,8 @@ def payment(request):
             total_amount=total_amount,
             status='confirmed'
         )
+        
+        print(f"Booking created successfully: {booking.booking_reference}")
         
         # Return JSON response for popup
         return JsonResponse({
@@ -168,9 +250,12 @@ def payment(request):
         })
         
     except Exception as e:
+        print(f"Payment error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return JsonResponse({
             'success': False,
-            'message': 'Payment failed. Please try again.'
+            'message': f'Payment failed: {str(e)}'
         })
 
 def manage_bookings(request):
@@ -178,7 +263,8 @@ def manage_bookings(request):
     if not request.user.is_authenticated:
         return redirect(f'/auth/login/?next={reverse("manage_bookings")}')
     
-    bookings = Booking.objects.filter(user=request.user).order_by('-created_at')
+    # Filter out cancelled bookings from the main view
+    bookings = Booking.objects.filter(user=request.user).exclude(status='cancelled').order_by('-created_at')
     
     # Add calculated fields to each booking
     for booking in bookings:
@@ -192,3 +278,70 @@ def manage_bookings(request):
     }
     
     return render(request, 'bookings/manage_bookings.html', context)
+
+@login_required(login_url='/auth/login/')
+@require_http_methods(["POST"])
+def cancel_booking(request, booking_id):
+    """Cancel a booking - requires authentication"""
+    try:
+        # Get the booking and verify ownership
+        booking = Booking.objects.get(id=booking_id, user=request.user)
+        
+        # Check if booking can be cancelled
+        if booking.status not in ['confirmed', 'pending']:
+            return JsonResponse({
+                'success': False,
+                'message': f'Cannot cancel booking with status: {booking.get_status_display()}'
+            })
+        
+        # Update booking status to cancelled
+        booking.status = 'cancelled'
+        booking.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Booking {booking.booking_reference} has been cancelled successfully.',
+            'booking_reference': booking.booking_reference
+        })
+        
+    except Booking.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'message': 'Booking not found or you do not have permission to cancel it.'
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Error cancelling booking: {str(e)}'
+        })
+
+@login_required(login_url='/auth/login/')
+def cancelled_bookings(request):
+    """Get cancelled bookings for AJAX request"""
+    try:
+        # Get only cancelled bookings
+        cancelled_bookings = Booking.objects.filter(user=request.user, status='cancelled').order_by('-created_at')
+        
+        # Add calculated fields to each booking
+        for booking in cancelled_bookings:
+            booking.adults_subtotal = float(booking.adult_price) * booking.adults
+            booking.children_subtotal = float(booking.child_price) * booking.children
+            booking.flight_subtotal = booking.adults_subtotal + booking.children_subtotal
+        
+        # Render the cancelled bookings HTML
+        from django.template.loader import render_to_string
+        html = render_to_string('bookings/cancelled_bookings_list.html', {
+            'bookings': cancelled_bookings
+        })
+        
+        return JsonResponse({
+            'success': True,
+            'bookings': list(cancelled_bookings.values('id', 'booking_reference', 'flight_code', 'status')),
+            'html': html
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Error loading cancelled bookings: {str(e)}'
+        })

@@ -4,7 +4,6 @@ from django.http import HttpResponse
 from django.views.generic.list import ListView
 from datetime import time
 
-#demo data for searching flights
 DEMO_FLIGHTS = [
     # airline, code, depart, arrive, origin, dest, duration_min, stops, price
     {"airline":"Virgin Australia","code":"VA882","depart":"19:00","arrive":"20:35","origin":"SYD","dest":"MEL","duration_min":95,"stops":0,"price":408},
@@ -26,7 +25,6 @@ def _enrich_duration(flightList):
 
 def flightList(request):
     trip=request.GET.get("trip",'oneway')
-    # Get parameters - form sends 'from' and 'to', not 'origin' and 'dest'
     origin=request.GET.get("from",'SYD')
     dest=request.GET.get('to','MEL')
     depart_date=request.GET.get('depart')
@@ -35,14 +33,11 @@ def flightList(request):
     children=request.GET.get('children','0')
     cabin=request.GET.get('cabin','Economy')
     
-    # Filter flights - removed date check since DEMO_FLIGHTS don't have dates
-    # This will show all flights regardless of the selected date
     outbound=[
         f for f in DEMO_FLIGHTS
         if f.get('origin')==origin and f.get("dest")==dest
     ]
 
-    #flights showed for return selection (reverse direction)
     inbound=[]
     if trip=='return' and return_date:
         inbound=[

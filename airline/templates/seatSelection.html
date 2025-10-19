@@ -80,7 +80,7 @@
     </div>
 
     <!-- Footer: selection summary -->
-    <form class="mt-4 text-center" method="get" action="{% url 'flightList' %}">
+    <form class="mt-4 text-center" method="get" action="{% url 'summary' %}">
       <input type="hidden" name="from" value="{{ origin }}">
       <input type="hidden" name="to" value="{{ dest }}">
       <input type="hidden" name="depart" value="{{ depart }}">
@@ -88,6 +88,7 @@
       <input type="hidden" name="cabin" value="{{ cabin }}">
       <input type="hidden" name="adults" value="{{ adults }}">
       <input type="hidden" name="children" value="{{ children }}">
+      <input type="hidden" name="code" value="{{ flight_code }}">
       <input type="hidden" name="seats" id="seatsInput">
 
       <div class="d-inline-flex align-items-center gap-3">

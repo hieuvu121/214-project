@@ -210,6 +210,16 @@
                               <span class="fw-semibold">${{ booking.seat_fees|floatformat:2 }}</span>
                             </div>
                             {% endif %}
+
+                            {% if booking.food_drinks_total > 0 %}
+                            <div class="mb-3 pb-3 border-bottom">
+                              <div class="d-flex justify-content-between mb-2">
+                                <span>Food & Drinks Total</span>
+                                <span class="fw-semibold">${{ booking.food_drinks_total|floatformat:2 }}</span>
+                              </div>
+                            </div>
+                            {% endif %}
+
                             <div class="d-flex justify-content-between mb-2">
                               <span>Taxes & Fees (15%)</span>
                               <span class="fw-semibold">${{ booking.taxes|floatformat:2 }}</span>

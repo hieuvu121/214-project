@@ -7,8 +7,14 @@ from django.contrib import messages
 from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
-from .models import Booking
+from .models import Booking, FoodItem
 import json
+from decimal import Decimal, ROUND_HALF_UP
+
+TWOPLACES = Decimal('0.01')
+def as_money(x: Decimal) -> Decimal:
+    return x.quantize(TWOPLACES, rounding=ROUND_HALF_UP)
+
 # Create your views here.
 def booking(request):
     code   = request.GET.get('code', 'VA882')
@@ -45,6 +51,7 @@ class homeView(TemplateView):
 
 def summary(request):
     # Get booking details from query parameters
+    import re
     flight_code = request.GET.get('code', 'VA882')
     cabin = request.GET.get('cabin', 'Economy')
     adults = int(request.GET.get('adults', 1) or 1)
@@ -54,40 +61,72 @@ def summary(request):
     depart = request.GET.get('depart', '')
     trip = request.GET.get('trip', 'return')
     seats = request.GET.get('seats', '')
-    
+    food_items_str = request.GET.get('food_items', '')
+
     # Parse selected seats
     selected_seats = seats.split(',') if seats else []
-    
-    # Calculate pricing
-    base_price = 299  # Base flight price
-    
-    # Cabin class multipliers
+
+    # Parse selected food items
+    selected_food_items = {}
+    if food_items_str:
+        try:
+            selected_food_items = json.loads(food_items_str)
+        except json.JSONDecodeError:
+            selected_food_items = {}
+    else:
+        selected_food_items = request.session.get('selected_food_items', {})
+
+    food_items_details = []
+    food_drinks_total = Decimal('0.00')
+
+    for item_id, quantity in selected_food_items.items():
+        try:
+            # Lấy số đầu tiên có trong key (vd: "drink_12" -> 12)
+            m = re.search(r'\d+', str(item_id))
+            if not m:
+                continue
+            fid = int(m.group())
+
+            qty = int(quantity)
+            if qty <= 0:
+                continue
+
+            food_item = FoodItem.objects.get(id=fid)
+            line_total = as_money(food_item.price * qty)
+            food_items_details.append({
+                'item': food_item,
+                'quantity': qty,
+                'total_price': line_total
+            })
+            food_drinks_total += line_total
+        except (FoodItem.DoesNotExist, ValueError, TypeError):
+            continue
+
+    food_drinks_total = as_money(food_drinks_total)
+
+    # Pricing
+    base_price = Decimal('299.00')
     cabin_multipliers = {
-        'Economy': 1.0,
-        'Premium Economy': 1.5,
-        'Business': 2.5
+        'Economy': Decimal('1.00'),
+        'Premium Economy': Decimal('1.50'),
+        'Business': Decimal('2.50')
     }
-    
-    # Calculate per passenger price based on cabin
-    multiplier = cabin_multipliers.get(cabin, 1.0)
-    adult_price = base_price * multiplier
-    child_price = adult_price * 0.75  # Children get 25% discount
-    
-    # Seat selection fees
-    seat_fee_per_seat = 25
-    total_seat_fees = len(selected_seats) * seat_fee_per_seat
-    
-    # Calculate subtotals
-    adults_subtotal = adults * adult_price
-    children_subtotal = children * child_price
-    flight_subtotal = adults_subtotal + children_subtotal
-    
-    # Taxes and fees (15% of flight subtotal)
-    taxes = flight_subtotal * 0.15
-    
-    # Grand total
-    grand_total = flight_subtotal + total_seat_fees + taxes
-    
+    multiplier = cabin_multipliers.get(cabin, Decimal('1.00'))
+
+    adult_price = as_money(base_price * multiplier)
+    child_price = as_money(adult_price * Decimal('0.75'))
+
+    seat_fee_per_seat = Decimal('25.00')
+    total_seat_fees = as_money(seat_fee_per_seat * Decimal(len(selected_seats)))
+
+    adults_subtotal = as_money(Decimal(adults) * adult_price)
+    children_subtotal = as_money(Decimal(children) * child_price)
+    flight_subtotal = as_money(adults_subtotal + children_subtotal)
+
+    taxes = as_money(flight_subtotal * Decimal('0.15'))
+
+    grand_total = as_money(flight_subtotal + total_seat_fees + food_drinks_total + taxes)
+
     context = {
         'flight_code': flight_code,
         'cabin': cabin,
@@ -106,11 +145,69 @@ def summary(request):
         'flight_subtotal': flight_subtotal,
         'seat_fee_per_seat': seat_fee_per_seat,
         'total_seat_fees': total_seat_fees,
+        'food_items_details': food_items_details,
+        'food_drinks_total': food_drinks_total,
+        'selected_food_items': selected_food_items,
         'taxes': taxes,
         'grand_total': grand_total,
     }
-    
+    print("DEBUG selected_food_items:", request.session.get('selected_food_items'))
+
     return render(request, 'summary.html', context)
+
+
+def food_drinks_selection(request):
+    """Food and drinks selection page"""
+    # Get booking details from query parameters
+    flight_code = request.GET.get('code', 'VA882')
+    cabin = request.GET.get('cabin', 'Economy')
+    adults = int(request.GET.get('adults', 1) or 1)
+    children = int(request.GET.get('children', 0) or 0)
+    origin = request.GET.get('from', '')
+    dest = request.GET.get('to', '')
+    depart = request.GET.get('depart', '')
+    trip = request.GET.get('trip', 'return')
+    seats = request.GET.get('seats', '')
+    
+    # Parse selected seats
+    selected_seats = seats.split(',') if seats else []
+    
+    # Get available food and drinks
+    drinks = FoodItem.objects.filter(category='drink', is_available=True)
+    foods = FoodItem.objects.filter(category='food', is_available=True)
+    
+    # Get selected items from session or request
+    selected_items = request.session.get('selected_food_items', {})
+    
+    context = {
+        'flight_code': flight_code,
+        'cabin': cabin,
+        'adults': adults,
+        'children': children,
+        'origin': origin,
+        'dest': dest,
+        'depart': depart,
+        'trip': trip,
+        'selected_seats': selected_seats,
+        'drinks': drinks,
+        'foods': foods,
+        'selected_items': selected_items,
+    }
+    
+    return render(request, 'food_drinks_selection.html', context)
+
+@csrf_exempt
+def update_food_selection(request):
+    """Update food selection in session"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            request.session['selected_food_items'] = data.get('selected_items', {})
+            request.session.modified = True
+            return JsonResponse({'success': True})
+        except json.JSONDecodeError:
+            return JsonResponse({'success': False, 'error': 'Invalid JSON'})
+    return JsonResponse({'success': False, 'error': 'Method not allowed'})
 
 def parse_selected_seats(selected_seats_str):
     """Safely parse selected seats from various formats"""
@@ -141,15 +238,11 @@ def parse_selected_seats(selected_seats_str):
 @login_required(login_url='/auth/login/')
 @require_http_methods(["POST"])
 def payment(request):
-    """Handle payment process - requires authentication"""
-    # Process payment (simplified for demo)
-    # In real implementation, you'd integrate with payment gateway
-    
     print(f"Payment request received from user: {request.user}")
     print(f"Request method: {request.method}")
     print(f"POST data: {request.POST}")
-    
-    # Get booking details from POST data
+
+    # Basic fields
     flight_code = request.POST.get('flight_code')
     origin = request.POST.get('origin')
     destination = request.POST.get('destination')
@@ -160,16 +253,18 @@ def payment(request):
     adults = int(request.POST.get('adults', 1))
     children = int(request.POST.get('children', 0))
     selected_seats = request.POST.get('selected_seats', '[]')
-    adult_price = float(request.POST.get('adult_price', 299))
-    child_price = float(request.POST.get('child_price', 224))
-    seat_fees = float(request.POST.get('seat_fees', 0))
-    taxes = float(request.POST.get('taxes', 0))
-    total_amount = float(request.POST.get('total_amount', 0))
-    
-    # Parse dates - handle different possible formats
+
+    # Parse money as Decimal
+    adult_price = Decimal(request.POST.get('adult_price', '299'))
+    child_price = Decimal(request.POST.get('child_price', '224'))
+    seat_fees = Decimal(request.POST.get('seat_fees', '0'))
+    food_drinks_total = Decimal(request.POST.get('food_drinks_total', '0'))
+    taxes = Decimal(request.POST.get('taxes', '0'))
+    total_amount = Decimal(request.POST.get('total_amount', '0'))
+
+    # Dates
     from datetime import datetime
     try:
-        # Try different date formats
         for fmt in ['%Y-%m-%d', '%m/%d/%Y', '%d/%m/%Y', '%Y-%m-%d %H:%M:%S']:
             try:
                 depart_date = datetime.strptime(depart_date_str, fmt).date()
@@ -177,15 +272,13 @@ def payment(request):
             except ValueError:
                 continue
         else:
-            # If no format works, use today's date
             depart_date = datetime.now().date()
     except:
         depart_date = datetime.now().date()
-    
+
     return_date = None
     if return_date_str and return_date_str.strip():
         try:
-            # Try different date formats for return date
             for fmt in ['%Y-%m-%d', '%m/%d/%Y', '%d/%m/%Y', '%Y-%m-%d %H:%M:%S']:
                 try:
                     return_date = datetime.strptime(return_date_str, fmt).date()
@@ -194,30 +287,10 @@ def payment(request):
                     continue
         except:
             return_date = None
-    
+
     try:
-        # Debug: Print received data
-        print(f"Payment data received:")
-        print(f"Flight code: {flight_code}")
-        print(f"Origin: {origin}")
-        print(f"Destination: {destination}")
-        print(f"Depart date: {depart_date}")
-        print(f"Return date: {return_date}")
-        print(f"Trip type: {trip_type}")
-        print(f"Cabin class: {cabin_class}")
-        print(f"Adults: {adults}")
-        print(f"Children: {children}")
-        print(f"Selected seats (raw): '{selected_seats}'")
-        print(f"Selected seats (type): {type(selected_seats)}")
         parsed_seats = parse_selected_seats(selected_seats)
-        print(f"Selected seats (parsed): {parsed_seats}")
-        print(f"Adult price: {adult_price}")
-        print(f"Child price: {child_price}")
-        print(f"Seat fees: {seat_fees}")
-        print(f"Taxes: {taxes}")
-        print(f"Total amount: {total_amount}")
-        
-        # Create booking record
+
         booking = Booking.objects.create(
             user=request.user,
             flight_code=flight_code,
@@ -229,55 +302,45 @@ def payment(request):
             cabin_class=cabin_class,
             adults=adults,
             children=children,
-            selected_seats=parse_selected_seats(selected_seats),
+            selected_seats=parsed_seats,
             adult_price=adult_price,
             child_price=child_price,
             seat_fees=seat_fees,
+            food_drinks_total=food_drinks_total,
             taxes=taxes,
             total_amount=total_amount,
             status='confirmed'
         )
-        
-        print(f"Booking created successfully: {booking.booking_reference}")
-        
-        # Return JSON response for popup
+
         return JsonResponse({
             'success': True,
             'message': f'Payment successful! Your booking reference is {booking.booking_reference}',
             'booking_reference': booking.booking_reference,
-            'total_amount': total_amount,
+            'total_amount': str(total_amount),
             'redirect_url': '/'
         })
-        
+
     except Exception as e:
-        print(f"Payment error: {str(e)}")
         import traceback
         traceback.print_exc()
-        return JsonResponse({
-            'success': False,
-            'message': f'Payment failed: {str(e)}'
-        })
+        return JsonResponse({'success': False, 'message': f'Payment failed: {str(e)}'})
+
 
 def manage_bookings(request):
-    """Show user's bookings - requires authentication"""
     if not request.user.is_authenticated:
         return redirect(f'/auth/login/?next={reverse("manage_bookings")}')
-    
-    # Filter out cancelled bookings from the main view
-    bookings = Booking.objects.filter(user=request.user).exclude(status='cancelled').order_by('-created_at')
-    
-    # Add calculated fields to each booking
-    for booking in bookings:
-        booking.adults_subtotal = float(booking.adult_price) * booking.adults
-        booking.children_subtotal = float(booking.child_price) * booking.children
-        booking.flight_subtotal = booking.adults_subtotal + booking.children_subtotal
-    
-    context = {
+
+    bookings = (Booking.objects
+                .filter(user=request.user)
+                .exclude(status='cancelled')
+                .order_by('-created_at'))
+
+    return render(request, 'bookings/manage_bookings.html', {
         'bookings': bookings,
-        'user': request.user
-    }
-    
-    return render(request, 'bookings/manage_bookings.html', context)
+        'user': request.user,
+    })
+
+
 
 @login_required(login_url='/auth/login/')
 @require_http_methods(["POST"])
@@ -317,31 +380,20 @@ def cancel_booking(request, booking_id):
 
 @login_required(login_url='/auth/login/')
 def cancelled_bookings(request):
-    """Get cancelled bookings for AJAX request"""
     try:
-        # Get only cancelled bookings
-        cancelled_bookings = Booking.objects.filter(user=request.user, status='cancelled').order_by('-created_at')
-        
-        # Add calculated fields to each booking
-        for booking in cancelled_bookings:
-            booking.adults_subtotal = float(booking.adult_price) * booking.adults
-            booking.children_subtotal = float(booking.child_price) * booking.children
-            booking.flight_subtotal = booking.adults_subtotal + booking.children_subtotal
-        
-        # Render the cancelled bookings HTML
+        cancelled = (Booking.objects
+                     .filter(user=request.user, status='cancelled')
+                     .order_by('-created_at'))
+
         from django.template.loader import render_to_string
         html = render_to_string('bookings/cancelled_bookings_list.html', {
-            'bookings': cancelled_bookings
+            'bookings': cancelled
         })
-        
+
         return JsonResponse({
             'success': True,
-            'bookings': list(cancelled_bookings.values('id', 'booking_reference', 'flight_code', 'status')),
+            'bookings': list(cancelled.values('id', 'booking_reference', 'flight_code', 'status')),
             'html': html
         })
-        
     except Exception as e:
-        return JsonResponse({
-            'success': False,
-            'message': f'Error loading cancelled bookings: {str(e)}'
-        })
+        return JsonResponse({'success': False, 'message': f'Error loading cancelled bookings: {str(e)}'})

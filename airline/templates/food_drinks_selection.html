@@ -1,0 +1,353 @@
+{% extends 'base.html' %}
+
+{% block title %}Food & Drinks - FlyAirline{% endblock %}
+
+{% block body %}
+<section class="py-5 bg-light" style="min-height: calc(100vh - 200px);">
+  <div class="container">
+    <!-- Header -->
+    <div class="text-center mb-4">
+      <h2 class="fw-bold mb-2">Food & Drinks Selection</h2>
+      <p class="text-muted">Choose your in-flight meals and beverages</p>
+      <div class="alert alert-info">
+        <i class="bi bi-info-circle me-2"></i>
+        <strong>Flight {{ flight_code }}</strong> • {{ cabin }} • {{ adults|add:children }} passenger(s)
+      </div>
+    </div>
+
+    <div class="row g-4">
+      <!-- Food & Drinks Selection -->
+      <div class="col-12 col-lg-8">
+        <!-- Drinks Section -->
+        <div class="card shadow-sm mb-4">
+          <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">
+              <i class="bi bi-cup-hot me-2"></i>Beverages
+            </h5>
+          </div>
+          <div class="card-body">
+            <div class="row g-3">
+              {% for drink in drinks %}
+                <div class="col-md-6 col-lg-4">
+                  <div class="card h-100 border-0 shadow-sm food-item-card" data-item-id="{{ drink.id }}" data-category="drink">
+                    <div class="card-body d-flex flex-column">
+                      <div class="text-center mb-3">
+                        <i class="bi bi-cup-hot text-primary" style="font-size: 2.5rem;"></i>
+                      </div>
+                      <h6 class="card-title text-center">{{ drink.name }}</h6>
+                      <p class="card-text text-muted small text-center">{{ drink.description|default:"Refreshing beverage" }}</p>
+                      <div class="text-center mb-3">
+                        <span class="h5 text-success">${{ drink.price|floatformat:2 }}</span>
+                      </div>
+                      <div class="mt-auto">
+                        <div class="d-flex align-items-center justify-content-center">
+                          <button class="btn btn-outline-secondary btn-sm quantity-btn" onclick="changeQuantity({{ drink.id }}, -1)">
+                            <i class="bi bi-dash"></i>
+                          </button>
+                          <span class="mx-3 quantity-display" id="qty-{{ drink.id }}">0</span>
+                          <button class="btn btn-outline-primary btn-sm quantity-btn" onclick="changeQuantity({{ drink.id }}, 1)">
+                            <i class="bi bi-plus"></i>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+
+        <!-- Food Section -->
+        <div class="card shadow-sm mb-4">
+          <div class="card-header bg-success text-white">
+            <h5 class="mb-0">
+              <i class="bi bi-egg-fried me-2"></i>Meals
+            </h5>
+          </div>
+          <div class="card-body">
+            <div class="row g-3">
+              {% for food in foods %}
+                <div class="col-md-6 col-lg-4">
+                  <div class="card h-100 border-0 shadow-sm food-item-card" data-item-id="{{ food.id }}" data-category="food">
+                    <div class="card-body d-flex flex-column">
+                      <div class="text-center mb-3">
+                        <i class="bi bi-egg-fried text-success" style="font-size: 2.5rem;"></i>
+                      </div>
+                      <h6 class="card-title text-center">{{ food.name }}</h6>
+                      <p class="card-text text-muted small text-center">{{ food.description|default:"Delicious meal" }}</p>
+                      <div class="text-center mb-3">
+                        <span class="h5 text-success">${{ food.price|floatformat:2 }}</span>
+                      </div>
+                      <div class="mt-auto">
+                        <div class="d-flex align-items-center justify-content-center">
+                          <button class="btn btn-outline-secondary btn-sm quantity-btn" onclick="changeQuantity({{ food.id }}, -1)">
+                            <i class="bi bi-dash"></i>
+                          </button>
+                          <span class="mx-3 quantity-display" id="qty-{{ food.id }}">0</span>
+                          <button class="btn btn-outline-success btn-sm quantity-btn" onclick="changeQuantity({{ food.id }}, 1)">
+                            <i class="bi bi-plus"></i>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Order Summary Sidebar -->
+      <div class="col-12 col-lg-4">
+        <div class="card shadow-sm " style="top: 20px;">
+          <div class="card-header bg-dark text-white">
+            <h5 class="mb-0">
+              Order Summary
+            </h5>
+          </div>
+          <div class="card-body">
+            <!-- Selected Items -->
+            <div id="selected-items-list">
+              <div class="text-center text-muted py-3">
+                <i class="bi bi-cart-x" style="font-size: 2rem;"></i>
+                <p class="mt-2 mb-0">No items selected</p>
+              </div>
+            </div>
+
+            <!-- Total -->
+            <div class="border-top pt-3 mt-3">
+              <div class="d-flex justify-content-between align-items-center">
+                <strong class="fs-5">Total</strong>
+                <strong class="fs-4 text-primary" id="total-price">$0.00</strong>
+              </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="d-grid gap-2 mt-4">
+              <form method="get" action="{% url 'summary' %}" id="continue-form">
+                <input type="hidden" name="from" value="{{ origin }}">
+                <input type="hidden" name="to" value="{{ dest }}">
+                <input type="hidden" name="depart" value="{{ depart }}">
+                <input type="hidden" name="trip" value="{{ trip }}">
+                <input type="hidden" name="cabin" value="{{ cabin }}">
+                <input type="hidden" name="adults" value="{{ adults }}">
+                <input type="hidden" name="children" value="{{ children }}">
+                <input type="hidden" name="code" value="{{ flight_code }}">
+                <input type="hidden" name="seats" value="{{ selected_seats|join:',' }}">
+                <input type="hidden" name="food_items" id="food-items-input">
+                
+                <button class="btn btn-primary btn-lg w-100" type="submit">
+                  <i class="bi bi-arrow-right me-2"></i>Continue to Summary
+                </button>
+              </form>
+              
+              <a href="{% url 'book' %}?code={{ flight_code }}&cabin={{ cabin }}&adults={{ adults }}&children={{ children }}&from={{ origin }}&to={{ dest }}&depart={{ depart }}&trip={{ trip }}" 
+                 class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-2"></i>Back to Seat Selection
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_head %}
+<style>
+  .food-item-card {
+    transition: all 0.3s ease;
+    cursor: pointer;
+  }
+  
+  .food-item-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15) !important;
+  }
+  
+  .food-item-card.selected {
+    border: 2px solid #0d6efd !important;
+    background-color: #f8f9ff;
+  }
+  
+  .quantity-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
+  
+  .quantity-display {
+    min-width: 30px;
+    text-align: center;
+    font-weight: 600;
+  }
+  
+  .selected-item {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 8px;
+  }
+  
+  .selected-item:last-child {
+    margin-bottom: 0;
+  }
+  
+  .item-name {
+    font-weight: 600;
+    color: #333;
+  }
+  
+  .item-price {
+    color: #28a745;
+    font-weight: 600;
+  }
+  
+  .sticky-top {
+    position: sticky;
+    top: 20px;
+  }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Store selected items
+  let selectedItems = {};
+  
+  // Initialize with any existing selections
+  {% for item_id, quantity in selected_items.items %}
+    selectedItems[{{ item_id }}] = {{ quantity }};
+  {% endfor %}
+  
+  // Update display on page load
+  updateDisplay();
+  
+  function changeQuantity(itemId, change) {
+    const currentQty = selectedItems[itemId] || 0;
+    const newQty = Math.max(0, currentQty + change);
+    
+    if (newQty === 0) {
+      delete selectedItems[itemId];
+    } else {
+      selectedItems[itemId] = newQty;
+    }
+    
+    updateDisplay();
+  }
+  
+  function updateDisplay() {
+    // Update quantity displays
+    document.querySelectorAll('.quantity-display').forEach(display => {
+      const itemId = display.id.replace('qty-', '');
+      const quantity = selectedItems[itemId] || 0;
+      display.textContent = quantity;
+      
+      // Update card appearance
+      const card = display.closest('.food-item-card');
+      if (quantity > 0) {
+        card.classList.add('selected');
+      } else {
+        card.classList.remove('selected');
+      }
+    });
+    
+    // Update selected items list
+    updateSelectedItemsList();
+    
+    // Update total price
+    updateTotalPrice();
+    
+    // Update form input
+    updateFormInput();
+  }
+  
+  function updateSelectedItemsList() {
+    const container = document.getElementById('selected-items-list');
+    
+    if (Object.keys(selectedItems).length === 0) {
+      container.innerHTML = `
+        <div class="text-center text-muted py-3">
+          <i class="bi bi-cart-x" style="font-size: 2rem;"></i>
+          <p class="mt-2 mb-0">No items selected</p>
+        </div>
+      `;
+      return;
+    }
+    
+    let html = '';
+    for (const [itemId, quantity] of Object.entries(selectedItems)) {
+      const item = getItemById(itemId);
+      if (item) {
+        const totalPrice = item.price * quantity;
+        html += `
+          <div class="selected-item">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <div class="item-name">${item.name}</div>
+                <small class="text-muted">Qty: ${quantity}</small>
+              </div>
+              <div class="item-price">$${totalPrice.toFixed(2)}</div>
+            </div>
+          </div>
+        `;
+      }
+    }
+    
+    container.innerHTML = html;
+  }
+  
+  function updateTotalPrice() {
+    let total = 0;
+    for (const [itemId, quantity] of Object.entries(selectedItems)) {
+      const item = getItemById(itemId);
+      if (item) {
+        total += item.price * quantity;
+      }
+    }
+    
+    document.getElementById('total-price').textContent = `$${total.toFixed(2)}`;
+  }
+  
+  function updateFormInput() {
+    const formInput = document.getElementById('food-items-input');
+    formInput.value = JSON.stringify(selectedItems);
+  }
+  
+  function getItemById(itemId) {
+    // This would normally come from the server, but for simplicity we'll use the data from the page
+    const itemElements = document.querySelectorAll('.food-item-card');
+    for (const element of itemElements) {
+      if (element.dataset.itemId === itemId) {
+        const name = element.querySelector('.card-title').textContent;
+        const priceText = element.querySelector('.h5').textContent;
+        const price = parseFloat(priceText.replace('$', ''));
+        return { name, price };
+      }
+    }
+    return null;
+  }
+  
+  // Store selections in session when form is submitted
+  document.getElementById('continue-form').addEventListener('submit', function(e) {
+    // Store in session for the summary page
+    fetch('{% url "update_food_selection" %}', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+      },
+      body: JSON.stringify({
+        selected_items: selectedItems
+      })
+    });
+  });
+</script>
+{% endblock %}
